@@ -1,0 +1,2347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Health Nexus Portal</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- SheetJS CDN for Excel & CSV parsing -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  
+  <!-- Plus Jakarta Sans Font Integration -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+          },
+          colors: {
+            nordic: {
+              bg: '#f8faf9',
+              text: '#0f172a',
+              card: '#ffffff',
+              emeraldDeep: '#064e3b',
+              emeraldMain: '#059669',
+              emeraldHover: '#047857',
+              emeraldLight: '#ecfdf5',
+              emeraldText: '#065f46',
+              gold: '#d97706',
+              goldLight: '#fef3c7'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #f8faf9;
+      color: #0f172a;
+      min-height: 100vh;
+    }
+
+    .header-nordic {
+      background-color: #064e3b;
+      color: #ffffff;
+    }
+
+    /* Soft UI Card Implementation */
+    .card-nordic {
+      background: #ffffff;
+      border: none; 
+      border-radius: 1.5rem; 
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04); 
+      transition: all 0.3s ease; 
+    }
+
+    .card-nordic:hover {
+      transform: translateY(-4px); 
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08); 
+    }
+
+    .btn-nordic-primary {
+      background-color: #059669;
+      color: #ffffff;
+      transition: background-color 0.2s ease, transform 0.1s ease;
+    }
+    .btn-nordic-primary:hover {
+      background-color: #047857;
+    }
+
+    .btn-nordic-gold {
+      background-color: #d97706;
+      color: #ffffff;
+    }
+    .btn-nordic-gold:hover {
+      background-color: #b45309;
+    }
+
+    .tab-btn {
+      transition: all 0.2s ease-in-out;
+      border-bottom: 3px solid transparent;
+    }
+    .tab-btn.active {
+      font-weight: 700;
+      color: #34d399; 
+      border-bottom-color: #34d399;
+    }
+
+    @media print {
+      body * { visibility: hidden; }
+      #printFaxSection, #printFaxSection * { visibility: visible; }
+      #printFaxSection {
+        position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 20px;
+        background: white; color: black; box-shadow: none !important; border: none !important;
+      }
+      .no-print { display: none !important; }
+    }
+  </style>
+
+  <!-- Google tag (gtag.js) - Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-YOUR_MEASUREMENT_ID"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    // --- B2B TENANT TRACKING ---
+    // Change this ID for every clinic you send the file to (e.g., 'Crystal_Run_01', 'Montefiore_01')
+    const CLINIC_ID = 'Beta_Tester_Default'; 
+    
+    // Set user properties so all events in GA4 are tagged to this clinic
+    gtag('set', 'user_properties', {
+      'clinic_name': CLINIC_ID
+    });
+
+    gtag('config', 'G-YOUR_MEASUREMENT_ID');
+  </script>
+</head>
+<body class="pb-12">
+
+  <header class="header-nordic shadow-lg sticky top-0 z-40 no-print">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      
+      <!-- Secret Admin Trigger: Click this block 5 times quickly -->
+      <div class="flex items-center gap-3.5 cursor-pointer select-none" onclick="handleSecretAdminClick()" title="Health Nexus">
+        <div class="w-10 h-10 rounded-xl bg-emerald-800 border border-emerald-400/30 flex items-center justify-center font-black text-xl shadow-inner text-white">
+          HN
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-xl font-bold tracking-tight text-white">Health Nexus Portal</h1>
+          </div>
+          <p class="text-xs text-emerald-100 font-medium">Healthcare Directory & Prior Authorization Portal</p>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2.5">
+        <div class="bg-emerald-900/60 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 border border-emerald-700/50 text-emerald-100">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span>Region: <strong id="displayState" class="text-white">NY (Active)</strong></span>
+        </div>
+
+        <button onclick="openStateModal()" class="bg-emerald-800 hover:bg-emerald-700 text-emerald-100 text-xs font-semibold px-3 py-2 rounded-lg transition border border-emerald-600/50 shadow-sm">
+          Change Region
+        </button>
+
+        <!-- Admin button is now hidden from regular users -->
+        <button id="adminImportBtn" onclick="openImportModal()" class="hidden btn-nordic-gold text-xs font-bold px-3.5 py-2 rounded-lg shadow-md transition flex items-center gap-1.5">
+          <span>📥</span> Import Excel / CSV
+        </button>
+      </div>
+    </div>
+
+    <div class="bg-emerald-900 border-t border-emerald-800 px-4 sm:px-6">
+      <div class="max-w-7xl mx-auto flex space-x-6 overflow-x-auto text-xs font-semibold" id="mainNavigationTabs">
+        <button onclick="switchTab('directoryTab', this)" class="tab-btn active py-3 text-emerald-100 hover:text-white flex items-center gap-1.5 whitespace-nowrap">
+          <span>📋</span> Dr & Ins Information
+        </button>
+        <button onclick="switchTab('formularyTab', this)" class="tab-btn py-3 text-emerald-100 hover:text-white flex items-center gap-1.5 whitespace-nowrap">
+          <span>💊</span> Formulary & PA Checker
+        </button>
+        <button onclick="switchTab('faxStudioTab', this)" class="tab-btn py-3 text-emerald-100 hover:text-white flex items-center gap-1.5 whitespace-nowrap">
+          <span>📠</span> Fax & PA Studio
+        </button>
+        <button onclick="switchTab('paymentPlansTab', this)" class="tab-btn py-3 text-emerald-100 hover:text-white flex items-center gap-1.5 whitespace-nowrap">
+          <span>💳</span> Payment Plans & Tiers
+        </button>
+      </div>
+      <div class="max-w-7xl mx-auto flex space-x-6 overflow-x-auto text-xs font-semibold hidden" id="adminNavigationTabs">
+        <button id="adminDashboardTabBtn" onclick="switchTab('adminDashboardTab', this)" class="tab-btn active py-3 text-amber-200 hover:text-white flex items-center gap-1.5 whitespace-nowrap">
+          <span>🛡️</span> Admin Analytics & Feedback
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 mt-8">
+    
+    <!-- Tab 1: Dr & Ins Information -->
+    <div id="directoryTab" class="tab-content">
+      
+      <div id="customDataBanner" class="hidden mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-2xl shadow-sm flex justify-between items-center text-xs">
+        <div class="flex items-center gap-2 text-emerald-900 font-medium">
+          <span>✅</span> Active Session loaded with <strong id="customDataCount">0</strong> custom imported records.
+        </div>
+        <button onclick="clearCustomData()" class="text-rose-700 hover:underline font-bold">Reset Custom Data</button>
+      </div>
+
+      <div class="card-nordic p-8 mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+          <div class="md:col-span-6">
+            <label class="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-1.5">Search Directory</label>
+            <input type="text" id="providerSearchInput" oninput="filterProviders()" placeholder="Search by name, specialty, NPI, or insurance/PBM..." class="w-full px-4 py-3.5 text-sm rounded-xl border border-stone-200 bg-stone-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all outline-none">
+          </div>
+          <div class="md:col-span-4">
+            <label class="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-1.5">Filter by County</label>
+            <select id="countyFilter" onchange="filterProviders()" class="w-full px-4 py-3.5 text-sm rounded-xl border border-stone-200 bg-stone-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all outline-none">
+              <option value="ALL">All Counties / National</option>
+              <option value="Rockland" selected>Rockland County</option>
+              <option value="Westchester">Westchester County</option>
+              <option value="Orange">Orange County</option>
+              <option value="Bergen">Bergen County</option>
+            </select>
+          </div>
+          <div class="md:col-span-2 flex items-end">
+            <button onclick="resetFilters()" class="w-full py-3.5 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold rounded-xl transition shadow-sm border border-stone-200">
+              Reset Filters
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-between items-center mb-5 px-1">
+        <h2 id="providerCount" class="text-sm font-bold text-stone-700">Loading directory...</h2>
+        <span class="text-xs text-stone-400 font-medium">Verified Directory & Insurance Database</span>
+      </div>
+
+      <div id="providerGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+
+    <!-- Tab 2: Formulary & PA Checker -->
+    <div id="formularyTab" class="tab-content hidden">
+      <div class="card-nordic p-8 mb-6">
+        <div class="flex justify-between items-start mb-2">
+          <h3 class="text-lg font-bold text-emerald-900 flex items-center gap-2">
+            <span>💊</span> Payer Formulary & PA Likelihood Checker
+          </h3>
+        </div>
+        <p class="text-xs text-stone-500 mb-6">Select an insurance payer formulary and search medications to check coverage status, PA requirements, and preferred therapeutic alternatives.</p>
+        
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-5 mb-2">
+          <div class="md:col-span-6">
+            <label class="flex justify-between items-center text-xs font-bold text-stone-500 uppercase tracking-wider mb-1.5">
+              <span>Select Insurance / Payer <span class="text-rose-500">*</span></span>
+              <button type="button" onclick="openPBMModal()" class="text-sky-600 hover:text-sky-800 flex items-center gap-1 bg-sky-50 px-2 py-0.5 rounded border border-sky-100 transition shadow-sm">
+                <span class="text-[10px]">ℹ️</span> PBM Cheat Sheet
+              </button>
+            </label>
+            <select id="payerSelect" class="w-full px-4 py-3.5 text-sm rounded-xl border border-stone-200 bg-stone-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all outline-none font-semibold text-emerald-900">
+              <optgroup label="Medicaid & State Programs">
+                <option value="MEDICAID_NY">NYRx Medicaid (Includes Emblem/MVP/Molina/Affinity)</option>
+                <option value="CARELON">Anthem Medicaid (CarelonRx)</option>
+                <option value="CVS_CAREMARK">UHC Medicaid (CVS Caremark)</option>
+              </optgroup>
+              <optgroup label="Medicare & Managed Care">
+                <option value="CVS_CAREMARK">Aetna Medicare / SilverScript (CVS Caremark)</option>
+                <option value="OPTUM">UHC Medicare / UMR (OptumRx)</option>
+                <option value="HUMANA">Humana</option>
+                <option value="CENTENE">Centene / Wellcare</option>
+                <option value="MVP_MEDICARE">MVP Medicare Part D</option>
+              </optgroup>
+              <optgroup label="Commercial & Union">
+                <option value="EXPRESS_SCRIPTS">Express Scripts</option>
+                <option value="LOCAL_1199">Local 1199 SEIU (Express Scripts)</option>
+                <option value="EXCELLUS">Excellus BlueCross BlueShield</option>
+                <option value="HEALTHPARTNERS">HealthPartners</option>
+              </optgroup>
+            </select>
+          </div>
+          <div class="md:col-span-6">
+            <label class="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-1.5">Search Medication (Brand or Generic) <span class="text-rose-500">*</span></label>
+            <input type="text" id="formularySearchBox" placeholder="e.g. Norco, Suboxone, Wegovy, Humira, Vyvanse..." class="w-full px-4 py-3.5 text-sm rounded-xl border border-stone-200 bg-stone-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all outline-none">
+            
+            <div class="mt-2.5 flex flex-wrap gap-2 items-center">
+              <span class="text-[10px] font-bold text-stone-400 uppercase">Trending:</span>
+              <button onclick="quickSearchMed('Ozempic')" class="text-[11px] font-semibold bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full border border-emerald-200 hover:bg-emerald-100 transition shadow-sm">Ozempic</button>
+              <button onclick="quickSearchMed('Wegovy')" class="text-[11px] font-semibold bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full border border-emerald-200 hover:bg-emerald-100 transition shadow-sm">Wegovy</button>
+              <button onclick="quickSearchMed('Eliquis')" class="text-[11px] font-semibold bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full border border-emerald-200 hover:bg-emerald-100 transition shadow-sm">Eliquis</button>
+              <button onclick="quickSearchMed('Adderall')" class="text-[11px] font-semibold bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full border border-emerald-200 hover:bg-emerald-100 transition shadow-sm">Adderall</button>
+              <button onclick="quickSearchMed('Humira')" class="text-[11px] font-semibold bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full border border-emerald-200 hover:bg-emerald-100 transition shadow-sm">Humira</button>
+            </div>
+
+          </div>
+        </div>
+
+        <div id="formularyResultsContainer" class="space-y-5 mt-6">
+          <p class="text-xs text-stone-500 italic bg-stone-50/50 p-6 rounded-2xl border border-stone-100 text-center">Select an insurance payer and type a medication name above to inspect formulary status and PA guidelines...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 3: Fax & PA Studio -->
+    <div id="faxStudioTab" class="tab-content hidden">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        <div class="lg:col-span-6 space-y-6">
+          <div class="card-nordic p-8 border-t-4 border-t-emerald-600">
+            <div class="flex items-center justify-between mb-5">
+              <h3 class="text-base font-bold text-emerald-900 flex items-center gap-2">
+                <span>📠</span> Prior Authorization & Fax Request Generator
+              </h3>
+              <span class="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 border border-amber-200/60 shadow-sm">
+                Print & Handwritten ID Mode
+              </span>
+            </div>
+
+            <p class="text-xs text-stone-500 mb-6 leading-relaxed">
+              Fill out the required clinical parameters below. Patient ID input is locked for HIPAA safety—handwrite the ID onto the printed form before faxing.
+            </p>
+
+            <form id="paForm" onsubmit="event.preventDefault();" class="space-y-4">
+              
+              <div class="bg-emerald-50/50 p-5 rounded-xl border border-emerald-100 mb-2">
+                <div class="flex justify-between items-center mb-3">
+                  <h4 class="text-[11px] font-bold text-emerald-900 uppercase tracking-wider">Payer / Pharmacy Routing</h4>
+                  <button type="button" onclick="openPBMModal()" class="text-sky-600 hover:text-sky-800 flex items-center gap-1 bg-white px-2 py-0.5 rounded border border-emerald-200 transition shadow-sm">
+                    <span class="text-[10px]">ℹ️</span> PBM Cheat Sheet
+                  </button>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-xs font-bold text-stone-600 mb-1.5">Select Payer Directory</label>
+                    <select id="payerDirectorySelect" onchange="autofillPayerFax()" class="w-full px-4 py-2.5 text-sm rounded-xl border border-emerald-200 bg-white focus:ring-2 focus:ring-emerald-500 outline-none transition shadow-sm">
+                      <option value="" data-phone="">-- Select Destination --</option>
+                      <optgroup label="CVS Caremark / Aetna">
+                        <option value="8003780323" data-phone="800-294-5979">CVS Caremark Standard</option>
+                        <option value="8003780323" data-phone="855-344-0930">CVS Caremark Med Part D</option>
+                        <option value="8003780323" data-phone="866-814-5506">CVS Caremark Specialty</option>
+                      </optgroup>
+                      <optgroup label="OptumRx / UnitedHealthcare">
+                        <option value="8779608235" data-phone="800-711-4555">OptumRx Standard</option>
+                        <option value="8663086296" data-phone="800-514-4912">OptumRx Expedited Appeal</option>
+                        <option value="8669407328" data-phone="N/A">UHC Regular</option>
+                        <option value="8019941058" data-phone="N/A">UHC Urgent</option>
+                      </optgroup>
+                      <optgroup label="NYRx / Prime Therapeutics / MVP">
+                        <option value="8002682990" data-phone="877-309-9493">NYRx / Magellan / Prime</option>
+                        <option value="8004243260" data-phone="N/A">Prime Therapeutics Standard</option>
+                        <option value="8004243312" data-phone="N/A">Prime Therapeutics Urgent</option>
+                        <option value="8884525947" data-phone="N/A">MVP Healthcare</option>
+                        <option value="authorizationrequest@mvphealthcare.com" data-phone="N/A">MVP Healthcare (Email)</option>
+                      </optgroup>
+                      <optgroup label="CarelonRx / Anthem">
+                        <option value="8445349053" data-phone="833-293-0659">CarelonRx / Anthem PA</option>
+                        <option value="8772365159" data-phone="N/A">Anthem BCBS</option>
+                      </optgroup>
+                      <optgroup label="Other Payers & Pharmacies">
+                        <option value="8883256544" data-phone="855-244-2555">Walgreens Specialty / AllianceRx</option>
+                        <option value="8884981038" data-phone="888-665-1885">RightWay</option>
+                        <option value="8453483045" data-phone="845-348-2000">Montefiore Nyack</option>
+                      </optgroup>
+                    </select>
+                    <p id="payerSupportPhone" class="text-[10px] text-emerald-700 mt-1.5 font-medium hidden">Support Phone: <span></span></p>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-stone-600 mb-1.5">Destination Fax Number <span class="text-rose-500">*</span></label>
+                    <input type="text" id="paDestinationFax" oninput="updateFaxPreview()" required placeholder="Select payer or type fax..." class="w-full px-4 py-2.5 text-sm rounded-xl border border-stone-200 bg-white focus:ring-2 focus:ring-emerald-500 outline-none transition font-mono shadow-sm">
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-1.5">
+                  Patient ID / Member No. <span class="text-xs font-normal text-rose-500">(Handwrite after printing)</span>
+                </label>
+                <div class="w-full px-4 py-3 text-sm rounded-xl border border-stone-200 bg-stone-100 text-stone-500 font-mono italic flex justify-between items-center shadow-inner">
+                  <span>[ WRITE IN HANDWRITTEN AFTER PRINTING ]</span>
+                  <span>✍️</span>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-xs font-bold text-stone-600 mb-1.5">Provider Name <span class="text-rose-500">*</span></label>
+                  <input type="text" id="paProviderName" oninput="updateFaxPreview()" required placeholder="e.g. Dr. Jane Miller, MD" class="w-full px-4 py-2.5 text-sm rounded-xl border border-stone-200 bg-stone-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 outline-none transition">
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-stone-600 mb-1.5">Provider NPI <span class="text-rose-500">*</span></label>
+                  <input type="text" id="paProviderNPI" oninput="updateFaxPreview()" required placeholder="10-digit NPI" class="w-full px-4 py-2.5 text-sm rounded-xl border border-stone-200 bg-stone-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 outline-none transition">
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-xs font-bold text-stone-600 mb-1.5">Provider Fax Number <span class="text-rose-500">*</span></label>
+                  <input type="text" id="paProviderFax" oninput="updateFaxPreview()" required placeholder="(845) 555-0199" class="w-full px-4 py-2.5 text-sm rounded-xl border border-stone-200 bg-stone-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 outline-none transition">
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-stone-600 mb-1.5">Medication Requested <span class="text-rose-500">*</span></label>
+                  <input type="text" id="paMedication" oninput="updateFaxPreview()" required placeholder="e.g. Ozempic, Wegovy, Lipitor" class="w-full px-4 py-2.5 text-sm rounded-xl border border-stone-200 bg-stone-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 outline-none transition">
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-xs font-bold text-stone-600 mb-1.5">Dose <span class="text-rose-500">*</span></label>
+                  <input type="text" id="paDose" oninput="updateFaxPreview()" required placeholder="e.g. 2mg / 0.75ml" class="w-full px-4 py-2.5 text-sm rounded-xl border border-stone-200 bg-stone-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 outline-none transition">
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-stone-600 mb-1.5">Quantity <span class="text-rose-500">*</span></label>
+                  <input type="text" id="paQuantity" oninput="updateFaxPreview()" required placeholder="e.g. 1 pen / 30-day supply" class="w-full px-4 py-2.5 text-sm rounded-xl border border-stone-200 bg-stone-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 outline-none transition">
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-stone-600 mb-1.5">Sig / Usage Instructions <span class="text-rose-500">*</span></label>
+                <input type="text" id="paSig" oninput="updateFaxPreview()" required placeholder="e.g. Inject 0.5mg subcutaneously once weekly" class="w-full px-4 py-2.5 text-sm rounded-xl border border-stone-200 bg-stone-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 outline-none transition">
+              </div>
+
+              <div>
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-1.5 gap-2">
+                  <label class="block text-xs font-bold text-stone-600">Associated Diagnoses (ICD-10 & Notes) <span class="text-rose-500">*</span></label>
+                  <div class="flex gap-2">
+                    <select onchange="appendCPT(this)" class="px-2 py-1 bg-sky-50 hover:bg-sky-100 border border-sky-200 rounded-lg text-[10px] font-bold text-sky-800 outline-none transition cursor-pointer shadow-sm">
+                      <option value="">⚡ Quick CPT...</option>
+                      <option value="CPT 70551: MRI Brain without contrast.">MRI Brain (70551)</option>
+                      <option value="CPT 74177: CT Abdomen and Pelvis with contrast.">CT Abdomen/Pelvis (74177)</option>
+                      <option value="CPT 93306: Echocardiogram, complete.">Echo (93306)</option>
+                      <option value="CPT 45378: Colonoscopy, diagnostic.">Colonoscopy (45378)</option>
+                    </select>
+                    <select onchange="appendICD10(this)" class="px-2 py-1 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg text-[10px] font-bold text-amber-800 outline-none transition cursor-pointer shadow-sm">
+                      <option value="">⚡ Quick ICD-10...</option>
+                      <option value="E11.9 Type 2 Diabetes Mellitus without complications.">Diabetes (E11.9)</option>
+                      <option value="E66.01 Morbid (severe) obesity due to excess calories.">Obesity (E66.01)</option>
+                      <option value="F90.2 Attention-deficit hyperactivity disorder, combined type.">ADHD (F90.2)</option>
+                      <option value="G43.909 Migraine, unspecified, not intractable.">Migraine (G43.909)</option>
+                      <option value="M54.5 Low back pain.">Back Pain (M54.5)</option>
+                      <option value="F11.20 Opioid dependence, uncomplicated.">OUD (F11.20)</option>
+                      <option value="L40.0 Psoriasis vulgaris.">Psoriasis (L40.0)</option>
+                    </select>
+                  </div>
+                </div>
+                <textarea id="paDiagnosis" oninput="updateFaxPreview()" rows="3" required placeholder="Select a quick ICD-10 or CPT code above or type rationale..." class="w-full px-4 py-2.5 text-sm rounded-xl border border-stone-200 bg-stone-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 outline-none transition"></textarea>
+              </div>
+
+              <!-- NY State SLA & Follow-up Reminder Banner -->
+              <div class="p-3.5 bg-amber-50/70 border border-amber-200/80 rounded-xl text-xs text-amber-900 space-y-1">
+                <span class="font-bold flex items-center gap-1"><span>⏱️</span> NY State SLA Turnaround Rule:</span>
+                <p class="text-[11px] text-amber-800/90 leading-tight">Standard PA decisions required within <strong>72 hours</strong>. Urgent/Expedited requests required within <strong>24 hours</strong> under NY Insurance Law.</p>
+              </div>
+
+              <div class="pt-2 flex flex-col sm:flex-row gap-3">
+                <button type="button" onclick="printPaDocument()" class="flex-1 btn-nordic-gold font-bold py-3.5 rounded-xl text-xs shadow-md flex items-center justify-center gap-2 hover:-translate-y-0.5 transition-transform">
+                  <span>🖨️</span> Print PA Form (Assigned Printer)
+                </button>
+                <button type="button" onclick="initiateCoverMyMeds()" class="flex-1 bg-sky-700 hover:bg-sky-800 text-white font-bold py-3.5 rounded-xl text-xs shadow-md flex items-center justify-center gap-2 hover:-translate-y-0.5 transition-transform">
+                  <span>💊</span> Launch CoverMyMeds ePA
+                </button>
+              </div>
+
+            </form>
+          </div>
+
+          <div class="card-nordic p-7 bg-sky-50/40">
+            <div class="flex items-center justify-between mb-4">
+              <div class="flex items-center gap-2">
+                <span class="text-lg">⚡</span>
+                <h4 class="font-bold text-sm text-sky-950">CoverMyMeds® Integration Hub</h4>
+              </div>
+              <span class="text-[10px] font-extrabold px-2.5 py-1 rounded-lg bg-sky-100 text-sky-800 border border-sky-200/60 shadow-sm">ePA Sync</span>
+            </div>
+            <p class="text-xs text-sky-900/80 mb-4 leading-relaxed">
+              Accelerate prior authorization decisions by generating a CoverMyMeds key or copying structured clinical PA data directly to your CoverMyMeds portal.
+            </p>
+            <div id="cmmStatusBox" class="bg-white p-3.5 rounded-xl shadow-sm text-xs text-stone-700 mb-4 border border-sky-100">
+              <div class="flex justify-between items-center">
+                <span class="font-semibold text-stone-500">CoverMyMeds ePA Request Key:</span>
+                <span id="cmmKeyDisplay" class="font-mono font-bold text-sky-700 bg-sky-50 px-2.5 py-1 rounded-lg">Not Generated</span>
+              </div>
+            </div>
+            <div class="flex gap-3">
+              <button onclick="generateCMMKey()" class="flex-1 text-xs font-bold bg-white text-sky-800 border border-sky-200 hover:border-sky-300 hover:shadow-sm py-2.5 rounded-xl transition">
+                🔑 Generate Key
+              </button>
+              <button onclick="copyCMMData()" class="flex-1 text-xs font-bold bg-sky-700 text-white hover:bg-sky-800 shadow-sm py-2.5 rounded-xl transition">
+                📋 Copy PA Payload
+              </button>
+              <a href="https://www.covermymeds.com/main/" target="_blank" class="px-4 text-xs font-bold bg-stone-800 text-white hover:bg-stone-900 shadow-sm rounded-xl flex items-center justify-center transition">
+                Portal ↗
+              </a>
+            </div>
+          </div>
+
+          <!-- PA FORMS HUB SECTION -->
+          <div class="card-nordic p-7 bg-stone-50 border-t-4 border-t-emerald-500 shadow-inner">
+            <h4 class="font-bold text-sm text-emerald-950 mb-3 flex items-center gap-2">
+              <span>🔗</span> Official Payer PA Forms & Portals
+            </h4>
+            <p class="text-xs text-stone-500 mb-4 leading-relaxed">Select a payer below to access their official Prior Authorization form repositories, clinical criteria, and specific electronic portals.</p>
+            
+            <select id="paFormPayerSelect" onchange="updatePAFormLinks()" class="w-full px-4 py-3 text-sm rounded-xl border border-stone-200 bg-white focus:ring-2 focus:ring-emerald-500 outline-none transition mb-4 shadow-sm font-semibold text-stone-700">
+                <option value="">-- Select Insurance / Payer --</option>
+                <option value="UHC">United Healthcare / OptumRx</option>
+                <option value="ANTHEM">Anthem / Elevance Health</option>
+                <option value="AETNA">Aetna / CVS Caremark</option>
+                <option value="CIGNA">Cigna / Express Scripts</option>
+                <option value="HUMANA">Humana</option>
+                <option value="CMM">CoverMyMeds (Universal ePA)</option>
+            </select>
+            
+            <div id="paFormLinksContainer" class="space-y-2 hidden">
+                <!-- Links rendered via JS -->
+            </div>
+          </div>
+          <!-- END PA FORMS HUB -->
+
+        </div>
+
+        <div class="lg:col-span-6">
+          <div class="sticky top-24">
+            <div class="flex justify-between items-center mb-3 px-1">
+              <span class="text-xs font-bold text-stone-500 uppercase tracking-wider">Live Document Preview</span>
+              <button onclick="printPaDocument()" class="text-xs font-bold text-emerald-700 hover:text-emerald-900 transition flex items-center gap-1.5 bg-emerald-50 px-3 py-1.5 rounded-lg shadow-sm">
+                <span>🖨 Send to Printer</span>
+              </button>
+            </div>
+
+            <div id="printFaxSection" class="card-nordic p-10 bg-white font-sans border border-stone-200/50 shadow-xl">
+              
+              <div class="border-b-2 border-stone-800 pb-5 mb-8 flex justify-between items-start">
+                <div>
+                  <h2 class="text-2xl font-extrabold uppercase tracking-tight text-stone-900">Prior Authorization Request</h2>
+                  <p class="text-xs text-stone-600 font-semibold mt-1">Healthcare Provider Direct Fax & Submission Sheet</p>
+                  <p class="text-sm text-stone-900 font-bold mt-4">TO FAX: <span id="prevDestinationFax" class="font-mono text-lg ml-1">____________________</span></p>
+                </div>
+                <div class="text-right text-xs text-stone-500">
+                  <p class="font-bold text-stone-800">CONFIDENTIAL MEDICAL FAX</p>
+                  <p id="faxDateDisplay" class="mt-0.5">Date: --/--/----</p>
+                </div>
+              </div>
+
+              <div class="mb-8 p-5 border-2 border-dashed border-stone-300 bg-stone-50/50 rounded-xl">
+                <div class="text-xs font-extrabold text-stone-700 uppercase tracking-wider mb-3">Patient Details (Handwrite After Printing):</div>
+                <div class="grid grid-cols-2 gap-6 text-xs font-mono">
+                  <div>
+                    <span class="text-stone-500">Patient ID / Member #:</span>
+                    <div class="border-b border-stone-400 mt-5 h-4"></div>
+                  </div>
+                  <div>
+                    <span class="text-stone-500">Patient DOB:</span>
+                    <div class="border-b border-stone-400 mt-5 h-4"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mb-8">
+                <h4 class="text-xs font-extrabold text-emerald-900 uppercase border-b border-emerald-800 pb-1.5 mb-3">Prescribing Provider Details</h4>
+                <div class="grid grid-cols-2 gap-y-2.5 text-xs">
+                  <div><strong class="text-stone-500">Provider Name:</strong> <span id="prevProviderName" class="font-semibold text-stone-900">____________________</span></div>
+                  <div><strong class="text-stone-500">NPI Number:</strong> <span id="prevProviderNPI" class="font-mono font-semibold text-stone-900">__________</span></div>
+                  <div class="col-span-2"><strong class="text-stone-500">Provider Fax:</strong> <span id="prevProviderFax" class="font-mono font-semibold text-stone-900">____________________</span></div>
+                </div>
+              </div>
+
+              <div class="mb-8">
+                <h4 class="text-xs font-extrabold text-emerald-900 uppercase border-b border-emerald-800 pb-1.5 mb-3">Requested Medication & Dosage</h4>
+                <div class="grid grid-cols-2 gap-y-3 text-xs">
+                  <div><strong class="text-stone-500">Medication:</strong> <span id="prevMedication" class="font-bold text-stone-900">____________________</span></div>
+                  <div><strong class="text-stone-500">Dose:</strong> <span id="prevDose" class="font-semibold text-stone-900">__________</span></div>
+                  <div><strong class="text-stone-500">Quantity:</strong> <span id="prevQuantity" class="font-semibold text-stone-900">__________</span></div>
+                  <div><strong class="text-stone-500">Refills:</strong> <span class="font-semibold text-stone-900">As per order</span></div>
+                  <div class="col-span-2"><strong class="text-stone-500">Sig / Directions:</strong> <span id="prevSig" class="font-medium text-stone-800">________________________________________</span></div>
+                </div>
+              </div>
+
+              <div class="mb-10">
+                <h4 class="text-xs font-extrabold text-emerald-900 uppercase border-b border-emerald-800 pb-1.5 mb-3">Associated Diagnoses & Clinical Rationale</h4>
+                <div id="prevDiagnosis" class="text-xs text-stone-800 bg-stone-50/80 p-4 rounded-lg border border-stone-200 min-h-[70px] font-mono leading-relaxed">
+                  [ Free text diagnosis and rationale will render here ]
+                </div>
+              </div>
+
+              <div class="pt-8 border-t border-stone-200 text-xs">
+                <div class="grid grid-cols-2 gap-10">
+                  <div>
+                    <div class="border-b border-stone-800 h-10"></div>
+                    <p class="text-[10px] text-stone-500 font-bold mt-2">Prescriber Signature</p>
+                  </div>
+                  <div>
+                    <div class="border-b border-stone-800 h-10"></div>
+                    <p class="text-[10px] text-stone-500 font-bold mt-2">Date Signed</p>
+                  </div>
+                </div>
+                <p class="text-[9px] text-stone-400 mt-8 text-center uppercase tracking-wider font-semibold">
+                  WARNING: This document contains confidential healthcare information. Protected under HIPAA Privacy Standards.
+                </p>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Tab 4: Payment Plans & Tiers -->
+    <div id="paymentPlansTab" class="tab-content hidden space-y-10">
+      <div class="text-center max-w-2xl mx-auto space-y-4">
+        <span class="text-[10px] font-extrabold uppercase px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-800 tracking-wider shadow-sm">Staff & Enterprise Licensing</span>
+        <h2 class="text-3xl font-black text-emerald-950 tracking-tight">Flexible Subscriptions for Practices & Networks</h2>
+        <p class="text-sm text-stone-500 leading-relaxed max-w-lg mx-auto">
+          Equip your healthcare staff with real-time directory lookups, automated PA fax generation, and CoverMyMeds integration. Save 20% with annual billing.
+        </p>
+
+        <div class="inline-flex items-center bg-stone-200/60 p-1.5 rounded-xl mt-6">
+          <button onclick="setBillingCycle('monthly')" id="billingMonthlyBtn" class="px-5 py-2.5 text-xs font-bold rounded-lg transition-all shadow-sm bg-white text-emerald-900">
+            Monthly Billing
+          </button>
+          <button onclick="setBillingCycle('yearly')" id="billingYearlyBtn" class="px-5 py-2.5 text-xs font-bold rounded-lg transition-all text-stone-500 hover:text-stone-900">
+            Yearly Billing <span class="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded ml-1 border border-emerald-200">Save 20%</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+        <div class="card-nordic p-8 border-t-4 border-t-emerald-500 flex flex-col justify-between">
+          <div>
+            <div class="flex justify-between items-center mb-4">
+              <span class="text-xs font-bold text-emerald-800 uppercase tracking-wider">Individual Clinician</span>
+              <span class="text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2.5 py-1 rounded-lg border border-emerald-200/60">Solo Practice</span>
+            </div>
+            <div class="text-4xl font-black my-4 text-stone-900">
+              <span id="priceClinician">$29</span> <span class="text-sm font-medium text-stone-400" id="cycleClinician">/ month</span>
+            </div>
+            <p class="text-sm text-stone-500 leading-relaxed mb-8">Designed for independent physicians, nurse practitioners, and solo medical providers.</p>
+            
+            <ul class="space-y-3.5 text-sm text-stone-700 mb-8 font-medium">
+              <li class="flex items-start gap-3"><span class="text-emerald-500 text-lg leading-none">✓</span> Full Rockland & Regional Provider Directory</li>
+              <li class="flex items-start gap-3"><span class="text-emerald-500 text-lg leading-none">✓</span> Unlimited Printable PA Fax Sheets</li>
+              <li class="flex items-start gap-3"><span class="text-emerald-500 text-lg leading-none">✓</span> CoverMyMeds ePA Quick-Key Sync</li>
+              <li class="flex items-start gap-3"><span class="text-emerald-500 text-lg leading-none">✓</span> Standard Email Support</li>
+            </ul>
+          </div>
+          <!-- STRIPE PAYMENT LINK INTEGRATION (Clinician Plan) -->
+          <button onclick="window.open('https://buy.stripe.com/YOUR_CLINICIAN_PLAN_LINK', '_blank')" class="w-full btn-nordic-primary py-3.5 rounded-xl text-sm font-bold shadow-md">
+            Subscribe via Stripe
+          </button>
+        </div>
+
+        <div class="card-nordic p-8 border-t-4 border-t-emerald-600 flex flex-col justify-between relative transform md:-translate-y-4 shadow-[0_20px_50px_rgb(5,150,105,0.1)] hover:shadow-[0_20px_50px_rgb(5,150,105,0.15)] ring-1 ring-emerald-100">
+          <div class="absolute -top-3.5 left-1/2 transform -translate-x-1/2 bg-emerald-600 text-white text-[10px] font-black uppercase px-4 py-1 rounded-full shadow-md tracking-wider">
+            Most Popular
+          </div>
+          <div>
+            <div class="flex justify-between items-center mb-4 mt-2">
+              <span class="text-xs font-bold text-emerald-800 uppercase tracking-wider">Clinic Staff Group</span>
+              <span class="text-[10px] bg-emerald-100 text-emerald-900 font-bold px-2.5 py-1 rounded-lg border border-emerald-300">Up to 10 Seats</span>
+            </div>
+            <div class="text-4xl font-black my-4 text-stone-900">
+              <span id="priceGroup">$89</span> <span class="text-sm font-medium text-stone-400" id="cycleGroup">/ month</span>
+            </div>
+            <p class="text-sm text-stone-500 leading-relaxed mb-8">Ideal for small multi-provider offices, medical assistants, and front-desk coordinators.</p>
+            
+            <ul class="space-y-3.5 text-sm text-stone-700 mb-8 font-medium">
+              <li class="flex items-start gap-3"><span class="text-emerald-600 text-lg leading-none">✓</span> Up to 10 Team Member Accounts</li>
+              <li class="flex items-start gap-3"><span class="text-emerald-600 text-lg leading-none">✓</span> Shared Custom Provider Imports (.xlsx)</li>
+              <li class="flex items-start gap-3"><span class="text-emerald-600 text-lg leading-none">✓</span> Advanced Formulary & RxNorm API</li>
+              <li class="flex items-start gap-3"><span class="text-emerald-600 text-lg leading-none">✓</span> Priority Phone & Chat Support</li>
+            </ul>
+          </div>
+          <!-- STRIPE PAYMENT LINK INTEGRATION (Group Plan) -->
+          <button onclick="window.open('https://buy.stripe.com/YOUR_GROUP_PLAN_LINK', '_blank')" class="w-full bg-emerald-800 hover:bg-emerald-900 text-white py-3.5 rounded-xl text-sm font-bold shadow-lg transition">
+            Subscribe via Stripe
+          </button>
+        </div>
+
+        <div class="card-nordic p-8 border-t-4 border-t-indigo-500 flex flex-col justify-between">
+          <div>
+            <div class="flex justify-between items-center mb-4">
+              <span class="text-xs font-bold text-indigo-800 uppercase tracking-wider">Enterprise Network</span>
+              <span class="text-[10px] bg-indigo-50 text-indigo-700 font-bold px-2.5 py-1 rounded-lg border border-indigo-200/60">Hospital Systems</span>
+            </div>
+            <div class="text-4xl font-black my-4 text-stone-900">
+              <span id="priceEnterprise">$299</span> <span class="text-sm font-medium text-stone-400" id="cycleEnterprise">/ month</span>
+            </div>
+            <p class="text-sm text-stone-500 leading-relaxed mb-8">Unlimited seats for large medical centers, hospital networks, and accountable care organizations.</p>
+            
+            <ul class="space-y-3.5 text-sm text-stone-700 mb-8 font-medium">
+              <li class="flex items-start gap-3"><span class="text-indigo-500 text-lg leading-none">✓</span> Unlimited Staff & Provider Accounts</li>
+              <li class="flex items-start gap-3"><span class="text-indigo-500 text-lg leading-none">✓</span> Dedicated Account Manager & API Access</li>
+              <li class="flex items-start gap-3"><span class="text-indigo-500 text-lg leading-none">✓</span> Custom EHR / EMR Integration Support</li>
+              <li class="flex items-start gap-3"><span class="text-amber-500 text-lg leading-none">★</span> <strong>Option to Negotiate Custom Pricing</strong></li>
+            </ul>
+          </div>
+          <div class="space-y-3">
+            <button onclick="openEnterpriseNegotiationModal()" class="w-full bg-stone-50 hover:bg-stone-100 text-indigo-800 border border-indigo-200 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2">
+              <span>🤝</span> Negotiate Custom Admin Quote
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="card-nordic p-8 bg-stone-50/50 max-w-6xl mx-auto">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-5 mb-6">
+          <div>
+            <h4 class="font-bold text-base text-emerald-950 flex items-center gap-2 mb-1">
+              <span>🏢</span> Enterprise & Custom Rate Negotiations
+            </h4>
+            <p class="text-sm text-stone-500">Need tailored pricing for multi-hospital deployments? Submit your terms directly to our admin team for review.</p>
+          </div>
+          <button onclick="openEnterpriseNegotiationModal()" class="btn-nordic-gold text-xs font-bold px-5 py-3 rounded-xl shadow-md whitespace-nowrap">
+            + Request Custom Enterprise Quote
+          </button>
+        </div>
+        <div id="negotiationListContainer" class="space-y-3"></div>
+      </div>
+    </div>
+
+    <!-- Tab 5: Admin Analytics & Feedback Dashboard -->
+    <div id="adminDashboardTab" class="tab-content hidden space-y-8">
+      <div class="card-nordic p-8 bg-gradient-to-br from-emerald-900 to-stone-900 text-white flex flex-col md:flex-row justify-between items-start md:items-center gap-5 overflow-hidden relative">
+        <div class="absolute -right-20 -top-20 w-64 h-64 bg-emerald-500/20 blur-3xl rounded-full pointer-events-none"></div>
+        <div class="relative z-10">
+          <div class="flex items-center gap-3 mb-2">
+            <span class="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase bg-amber-400 text-stone-950 shadow-sm">Secure Admin Console</span>
+            <span class="text-xs text-emerald-200 font-medium">Logged in as Administrator</span>
+          </div>
+          <h2 class="text-3xl font-black tracking-tight mb-1">App Analytics & Updates Center</h2>
+          <p class="text-sm text-emerald-100/80">Monitor portal traffic, inspect suggested provider updates, and moderate user feedback.</p>
+        </div>
+        <button onclick="toggleAdminMode(false)" class="relative z-10 bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold px-5 py-3 rounded-xl transition shadow-lg flex items-center gap-2">
+          <span>🔒</span> Lock & Exit Admin Mode
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div class="card-nordic p-6 border-l-4 border-l-emerald-500">
+          <span class="text-[10px] font-bold uppercase tracking-wider text-stone-400 block mb-2">Directory Searches</span>
+          <div class="text-4xl font-black text-stone-800" id="statSearches">1,428</div>
+          <span class="text-xs text-emerald-600 font-bold mt-2 flex items-center gap-1"><span class="text-lg leading-none">↑</span> 14% vs last week</span>
+        </div>
+        <div class="card-nordic p-6 border-l-4 border-l-emerald-500">
+          <span class="text-[10px] font-bold uppercase tracking-wider text-stone-400 block mb-2">PA Faxes Generated</span>
+          <div class="text-4xl font-black text-stone-800" id="statFaxes">312</div>
+          <span class="text-xs text-emerald-600 font-bold mt-2 flex items-center gap-1"><span class="text-lg leading-none">↑</span> 22% high demand</span>
+        </div>
+        <div class="card-nordic p-6 border-l-4 border-l-amber-500 bg-amber-50/20">
+          <span class="text-[10px] font-bold uppercase tracking-wider text-amber-700/70 block mb-2">User Feedback Logs</span>
+          <div class="text-4xl font-black text-amber-900" id="statFeedbackCount">0</div>
+          <span class="text-xs text-amber-700 font-bold mt-2 block">Pending review</span>
+        </div>
+        <div class="card-nordic p-6 border-l-4 border-l-indigo-500 bg-indigo-50/20">
+          <span class="text-[10px] font-bold uppercase tracking-wider text-indigo-700/70 block mb-2">Custom Imports</span>
+          <div class="text-4xl font-black text-indigo-900" id="statCustomCount">0</div>
+          <span class="text-xs text-indigo-700 font-bold mt-2 block">Active memory rows</span>
+        </div>
+      </div>
+
+      <div class="card-nordic p-8">
+        <div class="flex justify-between items-center mb-6">
+          <div>
+            <h3 class="text-lg font-bold text-emerald-950 flex items-center gap-2 mb-1">
+              <span>📥</span> Suggested Updates & Feedback
+            </h3>
+            <p class="text-sm text-stone-500">Review and moderate changes or updated information submitted by users.</p>
+          </div>
+          <button onclick="clearAllFeedback()" class="text-xs text-rose-600 hover:text-rose-800 font-bold bg-rose-50 px-3 py-1.5 rounded-lg transition">Clear All Feedback</button>
+        </div>
+        <div id="adminFeedbackListContainer" class="space-y-3"></div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Modals -->
+  <div id="pbmModal" class="fixed inset-0 bg-stone-900/40 backdrop-blur-sm z-50 hidden items-center justify-center p-4 transition-opacity no-print">
+    <div class="card-nordic max-w-lg w-full p-8 shadow-2xl relative transform transition-transform">
+      <button onclick="closePBMModal()" class="absolute top-5 right-5 text-stone-400 hover:text-stone-700 font-bold text-2xl transition">&times;</button>
+      <h3 class="text-xl font-bold text-emerald-950 mb-2 flex items-center gap-2"><span>🗺️</span> The "Who Owns What?" PBM Crosswalk</h3>
+      <p class="text-sm text-stone-500 mb-6">Match the patient's health plan card to the correct Pharmacy Benefit Manager (PBM) to find the right prior authorization fax number.</p>
+      
+      <div class="space-y-3 text-sm h-64 overflow-y-auto pr-2">
+         <div class="flex justify-between items-center bg-stone-50 p-4 rounded-xl border border-stone-100 shadow-sm">
+            <span class="font-bold text-stone-700">UMR / UnitedHealthcare</span>
+            <span class="text-stone-300 font-bold text-lg">➡️</span>
+            <span class="font-black text-amber-800 bg-amber-100/50 border border-amber-200 px-3 py-1 rounded-lg">OptumRx</span>
+         </div>
+         <div class="flex justify-between items-center bg-stone-50 p-4 rounded-xl border border-stone-100 shadow-sm">
+            <span class="font-bold text-stone-700">Emblem Health / MVP</span>
+            <span class="text-stone-300 font-bold text-lg">➡️</span>
+            <span class="font-black text-sky-800 bg-sky-100/50 border border-sky-200 px-3 py-1 rounded-lg">NYRx / Prime</span>
+         </div>
+         <div class="flex justify-between items-center bg-stone-50 p-4 rounded-xl border border-stone-100 shadow-sm">
+            <span class="font-bold text-stone-700">Aetna / SilverScript</span>
+            <span class="text-stone-300 font-bold text-lg">➡️</span>
+            <span class="font-black text-rose-800 bg-rose-100/50 border border-rose-200 px-3 py-1 rounded-lg">CVS Caremark</span>
+         </div>
+         <div class="flex justify-between items-center bg-stone-50 p-4 rounded-xl border border-stone-100 shadow-sm">
+            <span class="font-bold text-stone-700">Anthem / BCBS</span>
+            <span class="text-stone-300 font-bold text-lg">➡️</span>
+            <span class="font-black text-indigo-800 bg-indigo-100/50 border border-indigo-200 px-3 py-1 rounded-lg">CarelonRx</span>
+         </div>
+         <div class="flex justify-between items-center bg-stone-50 p-4 rounded-xl border border-stone-100 shadow-sm">
+            <span class="font-bold text-stone-700">Fidelis Care / Healthfirst</span>
+            <span class="text-stone-300 font-bold text-lg">➡️</span>
+            <span class="font-black text-rose-800 bg-rose-100/50 border border-rose-200 px-3 py-1 rounded-lg">CVS Caremark</span>
+         </div>
+         <div class="flex justify-between items-center bg-stone-50 p-4 rounded-xl border border-stone-100 shadow-sm">
+            <span class="font-bold text-stone-700">Cigna</span>
+            <span class="text-stone-300 font-bold text-lg">➡</span>
+            <span class="font-black text-emerald-800 bg-emerald-100/50 border border-emerald-200 px-3 py-1 rounded-lg">Express Scripts</span>
+         </div>
+         <div class="flex justify-between items-center bg-stone-50 p-4 rounded-xl border border-stone-100 shadow-sm">
+            <span class="font-bold text-stone-700">Local 1199 SEIU</span>
+            <span class="text-stone-300 font-bold text-lg">➡️</span>
+            <span class="font-black text-emerald-800 bg-emerald-100/50 border border-emerald-200 px-3 py-1 rounded-lg">Express Scripts</span>
+         </div>
+      </div>
+      <button onclick="closePBMModal()" class="w-full mt-6 py-3 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold rounded-xl transition shadow-sm border border-stone-200">Got it, close map</button>
+    </div>
+  </div>
+
+  <div id="stateModal" class="fixed inset-0 bg-stone-900/40 backdrop-blur-sm z-50 hidden items-center justify-center p-4 transition-opacity no-print">
+    <div class="card-nordic max-w-md w-full p-8 shadow-2xl relative transform transition-transform">
+      <h3 class="text-xl font-bold text-emerald-950 mb-2">Select Primary Healthcare Region</h3>
+      <p class="text-sm text-stone-500 mb-6">Filtering region dynamically updates local provider listings across all directories.</p>
+      
+      <select id="stateSelectInput" class="w-full px-4 py-3.5 text-sm rounded-xl border border-stone-200 bg-stone-50 font-medium mb-6 focus:bg-white focus:ring-2 focus:ring-emerald-500 outline-none transition">
+        <option value="NY" selected>New York (NY)</option>
+        <option value="NJ">New Jersey (NJ)</option>
+        <option value="CT">Connecticut (CT)</option>
+        <option value="PA">Pennsylvania (PA)</option>
+        <option value="FL">Florida (FL)</option>
+      </select>
+
+      <button onclick="saveStateSelection()" class="btn-nordic-primary w-full py-3.5 font-bold text-sm rounded-xl shadow-lg">
+        Confirm Region Selection
+      </button>
+    </div>
+  </div>
+
+  <div id="importModal" class="fixed inset-0 bg-stone-900/40 backdrop-blur-sm z-50 hidden items-center justify-center p-4 no-print">
+    <div class="card-nordic max-w-lg w-full p-8 shadow-2xl relative">
+      <button onclick="closeImportModal()" class="absolute top-5 right-5 text-stone-400 hover:text-stone-700 font-bold text-2xl transition">&times;</button>
+      <h3 class="text-xl font-bold text-emerald-950 mb-2">Import External Dataset</h3>
+      <p class="text-sm text-stone-500 mb-6">Upload your spreadsheet to instantly load provider data and NPIs into portal memory.</p>
+
+      <div onclick="document.getElementById('excelFileInput').click()" class="border-2 border-dashed border-emerald-300 bg-emerald-50/50 rounded-2xl p-10 text-center cursor-pointer hover:bg-emerald-100/50 transition duration-300">
+        <span class="text-5xl block mb-3 opacity-80">📊</span>
+        <span class="text-sm font-bold text-emerald-800 block mb-1">Click to select Crystal_Run_Provider_NPIs (1).xlsx</span>
+        <span class="text-xs text-emerald-600/70 font-medium">Supports .xlsx, .xls, or .csv formats</span>
+      </div>
+      <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" class="hidden" onchange="handleFileUpload(event)">
+
+      <div id="importStatus" class="mt-5 p-4 rounded-xl text-sm font-semibold hidden"></div>
+    </div>
+  </div>
+
+  <div id="feedbackModal" class="fixed inset-0 bg-stone-900/40 backdrop-blur-sm z-50 hidden items-center justify-center p-4 no-print">
+    <div class="card-nordic max-w-md w-full p-8 shadow-2xl relative">
+      <button onclick="closeFeedbackModal()" class="absolute top-5 right-5 text-stone-400 hover:text-stone-700 font-bold text-2xl transition">&times;</button>
+      <h3 class="text-xl font-bold text-emerald-950 mb-4">Suggest Provider Update</h3>
+      <form onsubmit="handleFeedbackSubmit(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-stone-500 uppercase mb-1.5">Update Type</label>
+          <select id="updateType" class="w-full px-4 py-3 text-sm rounded-xl border border-stone-200 bg-stone-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 outline-none transition">
+            <option value="Provider Directory">New Provider / Facility Info</option>
+            <option value="Fax Number Update">Updated Fax / Contact Number</option>
+            <option value="Medication Note">Medication / Coverage Note</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-stone-500 uppercase mb-1.5">Your Name / Clinic (Optional)</label>
+          <input type="text" id="feedbackAuthor" placeholder="e.g. Dr. Miller's Office" class="w-full px-4 py-3 text-sm rounded-xl border border-stone-200 bg-stone-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 outline-none transition">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-stone-500 uppercase mb-1.5">Target Name or NPI</label>
+          <input type="text" id="targetEntity" placeholder="e.g. Dr. Jane Miller or Montefiore Nyack" class="w-full px-4 py-3 text-sm rounded-xl border border-stone-200 bg-stone-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 outline-none transition">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-stone-500 uppercase mb-1.5">Details & Change Notes</label>
+          <textarea id="updateDetails" rows="3" required placeholder="Provide exact phone, address, or fax update details..." class="w-full px-4 py-3 text-sm rounded-xl border border-stone-200 bg-stone-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 outline-none transition"></textarea>
+        </div>
+        <p class="text-[11px] text-amber-700 bg-amber-50 p-3 rounded-lg font-medium border border-amber-100">⚠ Do not submit protected health information (PHI) or private patient details.</p>
+        <button type="submit" class="btn-nordic-primary w-full py-3.5 font-bold text-sm rounded-xl shadow-lg mt-2">
+          Submit Suggested Update
+        </button>
+      </form>
+      <div id="feedbackStatus" class="mt-4 p-4 rounded-xl text-sm font-semibold hidden text-center"></div>
+    </div>
+  </div>
+
+  <div id="adminAuthModal" class="fixed inset-0 bg-stone-900/40 backdrop-blur-sm z-50 hidden items-center justify-center p-4 no-print">
+    <div class="card-nordic max-w-md w-full p-8 shadow-2xl relative">
+      <button onclick="closeAdminAuthModal()" class="absolute top-5 right-5 text-stone-400 hover:text-stone-700 font-bold text-2xl transition">&times;</button>
+      <div id="adminAuthContent"></div>
+    </div>
+  </div>
+
+  <div id="negotiationModal" class="fixed inset-0 bg-stone-900/40 backdrop-blur-sm z-50 hidden items-center justify-center p-4 no-print">
+    <div class="card-nordic max-w-lg w-full p-8 shadow-2xl relative">
+      <button onclick="closeEnterpriseNegotiationModal()" class="absolute top-5 right-5 text-stone-400 hover:text-stone-700 font-bold text-2xl transition">&times;</button>
+      <h3 class="text-xl font-bold text-emerald-950 mb-2">Enterprise Custom Quote & Rate Negotiation</h3>
+      <p class="text-sm text-stone-500 mb-6">Negotiate subscription pricing directly with me (the admin) for your hospital network or health system.</p>
+
+      <form onsubmit="handleNegotiationSubmit(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-stone-600 uppercase mb-1.5">Organization / Hospital Name <span class="text-rose-500">*</span></label>
+          <input type="text" id="negOrgName" required placeholder="e.g. Rockland Health System / Montefiore Network" class="w-full px-4 py-3 text-sm rounded-xl border border-stone-200 bg-stone-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 outline-none transition">
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-stone-600 uppercase mb-1.5">Contact Person <span class="text-rose-500">*</span></label>
+            <input type="text" id="negContactName" required placeholder="e.g. Dr. Robert Vance, CTO" class="w-full px-4 py-3 text-sm rounded-xl border border-stone-200 bg-stone-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 outline-none transition">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-stone-600 uppercase mb-1.5">Estimated Staff Seats <span class="text-rose-500">*</span></label>
+            <input type="number" id="negSeats" required placeholder="e.g. 150 providers" class="w-full px-4 py-3 text-sm rounded-xl border border-stone-200 bg-stone-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 outline-none transition">
+          </div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-stone-600 uppercase mb-1.5">Proposed Budget ($ / month)</label>
+            <input type="text" id="negBudget" placeholder="e.g. $200 / mo or custom offer" class="w-full px-4 py-3 text-sm rounded-xl border border-stone-200 bg-stone-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 outline-none transition">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-stone-600 uppercase mb-1.5">Billing Term</label>
+            <select id="negTerm" class="w-full px-4 py-3 text-sm rounded-xl border border-stone-200 bg-stone-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 outline-none transition">
+              <option value="Annual Contract">Annual Contract (Preferred)</option>
+              <option value="Quarterly Contract">Quarterly Contract</option>
+              <option value="Monthly Custom">Monthly Custom Terms</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-stone-600 uppercase mb-1.5">Negotiation Notes & Special Requirements <span class="text-rose-500">*</span></label>
+          <textarea id="negNotes" rows="3" required placeholder="Describe custom EHR integrations, multi-location rollouts, or requested price adjustments..." class="w-full px-4 py-3 text-sm rounded-xl border border-stone-200 bg-stone-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 outline-none transition"></textarea>
+        </div>
+        <button type="submit" class="btn-nordic-gold w-full py-3.5 font-bold text-sm rounded-xl shadow-lg transition mt-2">
+          Submit Negotiation Proposal to Admin
+        </button>
+      </form>
+      <div id="negStatusMsg" class="mt-4 p-4 rounded-xl text-sm font-semibold hidden text-center"></div>
+    </div>
+  </div>
+
+  <script>
+    let isAdminMode = false;
+    
+    // --- SECRET ADMIN LOGIC ---
+    let secretClickCount = 0;
+    let secretClickTimer;
+
+    function handleSecretAdminClick() {
+      secretClickCount++;
+      clearTimeout(secretClickTimer);
+      
+      // If clicked 5 times quickly, trigger admin
+      if (secretClickCount >= 5) {
+        secretClickCount = 0;
+        if (isAdminMode) {
+          toggleAdminMode(false); // Log out if already in admin mode
+        } else {
+          openAdminAuthModal(); // Prompt for password if not in admin mode
+        }
+      } else {
+        // Reset the counter if they stop clicking for 1.5 seconds
+        secretClickTimer = setTimeout(() => {
+          secretClickCount = 0;
+        }, 1500);
+      }
+    }
+    // --------------------------
+
+    // --- OFFICIAL PA FORMS LINKS DATABASE ---
+    const PA_FORM_LINKS = {
+      "UHC": [
+          { name: "OptumRx PA Hub (All Forms)", url: "https://professionals.optumrx.com/prior-authorization.html" },
+          { name: "OptumRx PA Guidelines", url: "https://professionals.optumrx.com/resources/manuals-guides/pa-quidelines-procedures.html" },
+          { name: "OptumRx ePA via CoverMyMeds", url: "https://go.covermymeds.com/OptumRx" },
+          { name: "Optum ePA Overview", url: "https://business.optum.com/en/pharmacy-services/electronic-prior-authorization.html" }
+      ],
+      "ANTHEM": [
+          { name: "Anthem NY PA Requirements", url: "https://providers.anthem.com/new-york-provider/claims/prior-authorization-requirements" },
+          { name: "Anthem NY Pharmacy Info (Child Health Plus)", url: "https://providers.anthem.com/new-york-provider/resources/pharmacy-information" },
+          { name: "Anthem KY Pharmacy Info", url: "https://providers.anthem.com/kentucky-provider/resources/pharmacy-information" },
+          { name: "IN Medicaid Pharmacy PA Form", url: "https://providers.anthem.com/docs/app/IN_CAID_PharmacyPrior_Auth_Form.pdf" }
+      ],
+      "AETNA": [
+          { name: "Aetna Healthcare Professional Forms Hub", url: "https://www-cdn.aetna.com/health-care-professionals/health-care-professional-forms.html" },
+          { name: "Precertification Request for Prescription Drugs (General)", url: "https://es.aetna.com/content/dam/aetna/pdfs/aetnacom/healthcare-professionalsdocuments/-forms/precertification-request-for-prescription-drugs.pdf" },
+          { name: "Medicare Specialty Medication Precert Request", url: "https://www.aetna.com/content/dam/aetna/pdfs/aetnacom/pharmacy-insurance/healthcare-professional/documents/medicare-specialty-medication-precert-request.pdf" },
+          { name: "CVS Caremark Florida PA Form", url: "https://www.caremark.com/content/dam/enterprise/caremark/pdfs/pa-state-requirements/Florida_Prior_Authorization_Form.pdf" },
+          { name: "Aetna Precertification Lists", url: "https://www.aetna.com/health-care-professionals/precertification/precertification-lists.html" }
+      ],
+      "CIGNA": [
+          { name: "Cigna Provider PA Page (Portals)", url: "https://secure.cigna.com/health-care-providers/coverage-and-claims/prior-authorization" },
+          { name: "AZ Standard PA Form", url: "https://cigna.com/static/www-cigna-com/docs/arizona-standard-prior-authorization-form.pdf" },
+          { name: "FL PA Form", url: "https://cigna.com/static/www-cigna-com/docs/florida-authorization-form.pdf" },
+          { name: "NM Uniform PA Form", url: "https://cigna.com/static/www-cigna-com/docs/new-mexico-prior-authorization-form-medical.pdf" }
+      ],
+      "HUMANA": [
+          { name: "Humana Pharmacy Prior Authorizations (Main Hub)", url: "https://provider.humana.com/pharmacy-resources/prior-authorizations" },
+          { name: "Medicare Coverage Determination & Exceptions", url: "https://provider.humana.com/pharmacy-resources/exceptions-appeals" },
+          { name: "Humana Coverage Policies (Clinical Criteria)", url: "https://apps.humana.com/tad/tad_new/home.aspx?type=provider" },
+          { name: "Humana Prior Authorization Lists", url: "https://provider.humana.com/coverage-claims/prior-authorizations/prior-authorization-lists" },
+          { name: "VA Medicaid PA Page", url: "https://provider.humana.com/medicaid/virginia-medicaid/prior-authorization" }
+      ],
+      "CMM": [
+          { name: "CoverMyMeds Universal ePA Portal", url: "https://www.covermymeds.com" }
+      ]
+    };
+
+    window.updatePAFormLinks = function() {
+        const val = document.getElementById('paFormPayerSelect').value;
+        const container = document.getElementById('paFormLinksContainer');
+        if(!val) {
+            container.classList.add('hidden');
+            return;
+        }
+        container.classList.remove('hidden');
+        const links = PA_FORM_LINKS[val];
+        container.innerHTML = links.map(l => `
+            <a href="${l.url}" target="_blank" class="flex items-center gap-2 p-3 bg-white hover:bg-stone-50 border border-stone-200 rounded-lg text-xs font-semibold text-sky-700 hover:text-sky-900 transition shadow-sm">
+                <span class="text-sm">📄</span> ${l.name} <span class="ml-auto text-stone-400">↗</span>
+            </a>
+        `).join('');
+    };
+    // ------------------------------------------
+
+    // --- GLOBAL HELPER FUNCTIONS FOR UX ---
+    window.copyToClipboard = function(text, btn) {
+      navigator.clipboard.writeText(text);
+      const oldHtml = btn.innerHTML;
+      btn.innerHTML = '<span class="text-emerald-600 text-[10px] font-bold">Copied ✅</span>';
+      setTimeout(() => btn.innerHTML = oldHtml, 1500);
+    }
+
+    window.quickSearchMed = function(med) {
+      const box = document.getElementById('formularySearchBox');
+      if(box) {
+        box.value = med;
+        box.dispatchEvent(new Event('input')); 
+      }
+    }
+
+    window.appendICD10 = function(selectElement) {
+      const val = selectElement.value;
+      if(!val) return;
+      const box = document.getElementById('paDiagnosis');
+      if(box) {
+        box.value = box.value ? box.value + "\n" + val : val;
+        updateFaxPreview();
+      }
+      selectElement.selectedIndex = 0; 
+    }
+
+    window.appendCPT = function(selectElement) {
+      const val = selectElement.value;
+      if(!val) return;
+      const box = document.getElementById('paDiagnosis');
+      if(box) {
+        box.value = box.value ? box.value + "\n" + val : val;
+        updateFaxPreview();
+      }
+      selectElement.selectedIndex = 0;
+    }
+
+    function openPBMModal() {
+      const modal = document.getElementById('pbmModal');
+      if(modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+    }
+
+    function closePBMModal() {
+      const modal = document.getElementById('pbmModal');
+      if(modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+    // --------------------------------------
+    
+    const ROCKLAND_PROVIDERS = [
+      { name: "Montefiore Nyack Hospital", specialty: "General Acute Care Hospital", npi: "1427019284", address: "160 N Midland Ave", city: "Nyack", state: "NY", zip: "10960", county: "Rockland", phone: "(845) 348-2000", fax: "845-348-3045", acceptedPlans: "Takes: Most Major Plans | OON: UHC Community" },
+      { name: "Montefiore Nyack Radiology / Imaging", specialty: "Radiology Department", npi: "1427019284", address: "160 N Midland Ave", city: "Nyack", state: "NY", zip: "10960", county: "Rockland", phone: "(845) 348-2650", fax: "845-348-2659" },
+      { name: "Montefiore Nyack Cardiology", specialty: "Cardiology Department", npi: "1427019284", address: "160 N Midland Ave", city: "Nyack", state: "NY", zip: "10960", county: "Rockland", phone: "(845) 348-2000", fax: "845-348-2899" },
+      { name: "Good Samaritan Hospital", specialty: "Regional Medical Center", npi: "1851349201", address: "255 Lafayette Ave", city: "Suffern", state: "NY", zip: "10901", county: "Rockland", phone: "(845) 368-5000", fax: "(845) 368-5188" },
+      { name: "Helen Hayes Hospital", specialty: "Physical Medicine & Rehabilitation", npi: "1184620193", address: "Route 9W", city: "West Haverstraw", state: "NY", zip: "10993", county: "Rockland", phone: "(845) 947-3000", fax: "(845) 947-3105" },
+      { name: "Refuah Health Center", specialty: "Community Health & Family Medicine", npi: "1639201847", address: "725 Ramapo Rd", city: "Spring Valley", state: "NY", zip: "10977", county: "Rockland", phone: "(845) 356-5600", fax: "(845) 356-5788" },
+      { name: "Sun River Health", specialty: "Federally Qualified Health Center", npi: "1987340291", address: "84 Rte 59", city: "Monsey", state: "NY", zip: "10952", county: "Rockland", phone: "(845) 352-6800", fax: "(845) 352-6902" },
+      { name: "Crystal Run Healthcare", specialty: "Multi-Specialty Medical Group", npi: "1254910293", address: "2 Centerock Rd", city: "West Nyack", state: "NY", zip: "10994", county: "Rockland", phone: "(845) 353-2600", fax: "(845) 353-2710", acceptedPlans: "Takes: MVP, Fidelis, UHC, 1199 | OON: Healthfirst" },
+      { name: "Highland Medical, P.C.", specialty: "Cardiology & Internal Medicine", npi: "1598203948", address: "160 N Midland Ave", city: "Nyack", state: "NY", zip: "10960", county: "Rockland", phone: "(845) 348-2650", fax: "(845) 348-2659" },
+      { name: "Rockland County Pediatric Associates", specialty: "Pediatrics", npi: "1749201843", address: "97 Victoria Rd", city: "Middletown", state: "NY", zip: "10940", county: "Rockland", phone: "(845) 352-4300", fax: "(845) 352-4312" }
+    ];
+
+    const INSURANCE_PROVIDERS = [
+      { name: "Centene / Wellcare", specialty: "Payer Support Line", npi: "N/A", address: "National", city: "National", state: "NY", zip: "N/A", county: "ALL", phone: "855-538-0453", fax: "N/A", isInsurance: true },
+      { name: "CarelonRx / Anthem", specialty: "PBM Support Line", npi: "N/A", address: "National", city: "National", state: "NY", zip: "N/A", county: "ALL", phone: "833-293-0659", fax: "N/A", isInsurance: true },
+      { name: "Molina / Affinity", specialty: "Payer Support Line", npi: "N/A", address: "New York", city: "National", state: "NY", zip: "N/A", county: "ALL", phone: "888-964-0142", fax: "N/A", isInsurance: true },
+      { name: "Walgreens Specialty / AllianceRx", specialty: "Specialty Pharmacy", npi: "N/A", address: "National", city: "National", state: "NY", zip: "N/A", county: "ALL", phone: "855-244-2555", fax: "N/A", isInsurance: true },
+      { name: "RightWay", specialty: "PBM Support Line", npi: "N/A", address: "National", city: "National", state: "NY", zip: "N/A", county: "ALL", phone: "888-665-1885", fax: "N/A", isInsurance: true },
+      { name: "NYRx / Magellan / Prime", specialty: "Medicaid Pharmacy Program", npi: "N/A", address: "New York", city: "Albany", state: "NY", zip: "N/A", county: "ALL", phone: "877-309-9493", fax: "800-268-2990", isInsurance: true },
+      { name: "Prime Therapeutics Standard", specialty: "PBM Support / Standard PA", npi: "N/A", address: "National", city: "National", state: "NY", zip: "N/A", county: "ALL", phone: "N/A", fax: "800-424-3260", isInsurance: true },
+      { name: "Prime Therapeutics Urgent", specialty: "PBM Support / Urgent PA", npi: "N/A", address: "National", city: "National", state: "NY", zip: "N/A", county: "ALL", phone: "N/A", fax: "800-424-3312", isInsurance: true },
+      { name: "OptumRx Standard", specialty: "PBM Support Line", npi: "N/A", address: "National", city: "National", state: "NY", zip: "N/A", county: "ALL", phone: "800-711-4555", fax: "N/A", isInsurance: true },
+      { name: "OptumRx Expedited Appeal", specialty: "PBM Support Line", npi: "N/A", address: "National", city: "National", state: "NY", zip: "N/A", county: "ALL", phone: "800-514-4912", fax: "N/A", isInsurance: true },
+      { name: "CVS Caremark Standard", specialty: "PBM Support Line", npi: "N/A", address: "National", city: "National", state: "NY", zip: "N/A", county: "ALL", phone: "800-294-5979", fax: "N/A", isInsurance: true },
+      { name: "CVS Caremark Med Part D", specialty: "PBM Support Line", npi: "N/A", address: "National", city: "National", state: "NY", zip: "N/A", county: "ALL", phone: "855-344-0930", fax: "N/A", isInsurance: true },
+      { name: "CVS Caremark Specialty", specialty: "Specialty Pharmacy", npi: "N/A", address: "National", city: "National", state: "NY", zip: "N/A", county: "ALL", phone: "866-814-5506", fax: "N/A", isInsurance: true },
+      { name: "Medicare Part B (General)", specialty: "Federal Health Insurance", npi: "N/A", address: "National", city: "National", state: "NY", zip: "N/A", county: "ALL", phone: "877-869-6504 / 866-837-0241", fax: "N/A", isInsurance: true },
+      { name: "GHI / Emblem PPO", specialty: "Health Insurance", npi: "N/A", address: "New York", city: "National", state: "NY", zip: "N/A", county: "ALL", phone: "800-624-2414", fax: "N/A", isInsurance: true },
+      { name: "Express Scripts", specialty: "PBM Support Line", npi: "N/A", address: "National", city: "National", state: "NY", zip: "N/A", county: "ALL", phone: "800-753-2851", fax: "N/A", isInsurance: true },
+      { name: "Aetna Provider Services", specialty: "Health Insurance", npi: "N/A", address: "National", city: "National", state: "NY", zip: "N/A", county: "ALL", phone: "855-743-5135", fax: "N/A", isInsurance: true }
+    ];
+
+    // LOCAL "FUZZY" THESAURUS
+    const THESAURUS = {
+      "acetaminophen": ["norco", "percocet", "tramadol"],
+      "apap": ["norco", "percocet", "tramadol"],
+      "semaglutide": ["ozempic", "wegovy", "rybelsus"],
+      "tirzepatide": ["mounjaro", "zepbound"],
+      "dulaglutide": ["trulicity"],
+      "dapagliflozin": ["farxiga"],
+      "buprenorphine": ["suboxone", "zubsolv", "belbuca", "butrans"],
+      "hydrocodone": ["norco"],
+      "oxycodone": ["roxicodone", "oxycontin", "percocet", "xtampza er"],
+      "pregabalin": ["lyrica"],
+      "gabapentin": ["neurontin"],
+      "diclofenac": ["voltaren"],
+      "rimegepant": ["nurtec"],
+      "ubrogepant": ["ubrelvy"],
+      "galcanezumab": ["emgality"],
+      "erenumab": ["aimovig"],
+      "cariprazine": ["vraylar"],
+      "vortioxetine": ["trintellix"],
+      "brexpiprazole": ["rexulti"],
+      "lumateperone": ["caplyta"],
+      "lisdexamfetamine": ["vyvanse"],
+      "amphetamine": ["adderall", "mydayis", "adzenys", "vyvanse"],
+      "methylphenidate": ["concerta", "ritalin"],
+      "atomoxetine": ["strattera"],
+      "guanfacine": ["intuniv"],
+      "umeclidinium": ["trelegy"],
+      "vilanterol": ["trelegy", "breo"],
+      "budesonide": ["symbicort"],
+      "formoterol": ["symbicort"],
+      "linaclotide": ["linzess"],
+      "dexlansoprazole": ["dexilant"],
+      "risankizumab": ["skyrizi"],
+      "upadacitinib": ["rinvoq"],
+      "dupilumab": ["dupixent"],
+      "celecoxib": ["celebrex"],
+      "apixaban": ["eliquis"],
+      "rivaroxaban": ["xarelto"],
+      "albuterol": ["proair", "ventolin", "proventil"]
+    };
+
+    const PAYER_FORMULARY_DATABASE = {
+      // GLP-1, SGLT2 & Diabetes
+      "metformin": {
+        name: "Metformin (Glucophage)", category: "Biguanide", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Preferred", paRequired: "Not Likely", paReason: "NYRx: Standard first-line therapy for Type 2 Diabetes. Dose Optimization limits apply to ER formulations.", alternatives: ["glipizide"] },
+          "ALL": { tier: "Tier 1 (Generic)", paRequired: "Not Likely", paReason: "Standard zero-copay generic. First-line step for most Type 2 Diabetes treatments.", alternatives: ["glipizide"] }
+        }
+      },
+      "trulicity": {
+        name: "Trulicity (dulaglutide)", category: "GLP-1 Receptor Agonist", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Preferred", paRequired: "Not Likely (Unless with DPP-4)", paReason: "NYRx: Confirm diagnosis of FDA-approved indication. PA is required if utilizing a GLP-1 and DPP-IV concurrently.", alternatives: ["Victoza", "Metformin"] },
+          "ALL": { tier: "Tier 2", paRequired: "Sometimes Required", paReason: "Usually the preferred commercial GLP-1. PA required to confirm Type 2 Diabetes diagnosis.", alternatives: ["Metformin"] }
+        }
+      },
+      "victoza": {
+        name: "Victoza (liraglutide)", category: "GLP-1 Receptor Agonist", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Preferred (BLTG)", paRequired: "Not Likely", paReason: "NYRx: Brand Less Than Generic (BLTG) preferred agent. Confirm T2DM diagnosis.", alternatives: ["Trulicity"] },
+          "ALL": { tier: "Tier 2", paRequired: "Sometimes Required", paReason: "PA required to confirm Type 2 Diabetes diagnosis.", alternatives: ["Trulicity"] }
+        }
+      },
+      "jardiance": {
+        name: "Jardiance (empagliflozin)", category: "SGLT2 Inhibitor", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Preferred", paRequired: "Not Likely", paReason: "NYRx: Preferred SGLT2 inhibitor. Does not require PA for standard FDA indications.", alternatives: ["Farxiga (dapagliflozin)"] },
+          "ALL": { tier: "Tier 2", paRequired: "Sometimes Required", paReason: "Step therapy through metformin usually applies.", alternatives: ["Farxiga"] }
+        }
+      },
+      "ozempic": {
+        name: "Ozempic (semaglutide)", category: "GLP-1 Receptor Agonist", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Preferred", paRequired: "Not Likely (Unless with DPP-4)", paReason: "NYRx: Confirm diagnosis of FDA-approved indication. PA is required for patients utilizing a GLP-1 and DPP-IV concurrently.", alternatives: ["Trulicity", "Victoza"] },
+          "ALL": { tier: "Tier 2 or 3", paRequired: "Likely Required", paReason: "Step therapy required.", alternatives: ["Trulicity", "Metformin"] }
+        }
+      },
+      "wegovy": {
+        name: "Wegovy (semaglutide)", category: "GLP-1 (Weight Management)", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Covered with Strict PA", paRequired: "Highly Likely", paReason: "NYRx LIFETIME QUANTITY LIMIT: Two treatment attempts per lifetime. Confirm diagnosis of cardiovascular disease AND patient BMI >=40. Must participate in lifestyle modifications.", alternatives: ["Zepbound"] },
+          "ALL": { tier: "Tier 3 / Excluded", paRequired: "Highly Likely", paReason: "Standard commercial weight loss PA criteria applies or plan exclusion.", alternatives: ["Zepbound", "Diet & Exercise"] }
+        }
+      },
+      "zepbound": {
+        name: "Zepbound (tirzepatide)", category: "GIP/GLP-1 (Weight Management)", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Covered with Strict PA", paRequired: "Highly Likely", paReason: "NYRx LIFETIME QUANTITY LIMIT: Two treatment attempts per lifetime. Confirm diagnosis of obstructive sleep apnea (OSA) AND patient BMI >=40. Must participate in lifestyle modifications.", alternatives: ["Wegovy"] },
+          "ALL": { tier: "Tier 3", paRequired: "Highly Likely", paReason: "Standard commercial weight loss PA criteria applies.", alternatives: ["Wegovy"] }
+        }
+      },
+      "mounjaro": {
+        name: "Mounjaro (tirzepatide)", category: "GIP/GLP-1 (Type 2 Diabetes)", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Non-Preferred", paRequired: "Highly Likely", paReason: "NYRx: PA required. Trial of preferred GLP-1 required.", alternatives: ["Ozempic", "Trulicity"] },
+          "ALL": { tier: "Tier 2 or 3", paRequired: "Likely Required", paReason: "PA confirms T2DM diagnosis and step therapy.", alternatives: ["Ozempic"] }
+        }
+      },
+      "rybelsus": {
+        name: "Rybelsus (oral semaglutide)", category: "GLP-1 Receptor Agonist", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Non-Preferred", paRequired: "Highly Likely", paReason: "NYRx: PA required. Trial of preferred injectable GLP-1 (Ozempic/Trulicity) required.", alternatives: ["Ozempic", "Trulicity"] },
+          "ALL": { tier: "Tier 2", paRequired: "Sometimes Required", paReason: "Requires Type 2 Diabetes diagnosis.", alternatives: ["Metformin"] }
+        }
+      },
+      "farxiga": {
+        name: "dapagliflozin (generic Farxiga)", category: "SGLT2 Inhibitor", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Preferred (Generic)", paRequired: "Not Likely", paReason: "NYRx: Generic dapagliflozin is preferred. (Brand Farxiga removed from BLTG).", alternatives: ["Jardiance"] },
+          "ALL": { tier: "Tier 2", paRequired: "Sometimes Required", paReason: "Step therapy through metformin usually applies.", alternatives: ["Jardiance"] }
+        }
+      },
+      
+      // DOACs / Blood Thinners
+      "eliquis": {
+        name: "Eliquis (apixaban)", category: "DOAC / Blood Thinner", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Preferred", paRequired: "Not Likely", paReason: "NYRx: Preferred agent. Standard diagnosis required.", alternatives: ["Xarelto", "Warfarin"] },
+          "ALL": { tier: "Tier 2 (Preferred Brand)", paRequired: "Sometimes Required", paReason: "Preferred DOAC on most commercial and Medicare Part D plans. PA may be required for prolonged DVT prophylaxis.", alternatives: ["Xarelto"] }
+        }
+      },
+      "xarelto": {
+        name: "Xarelto (rivaroxaban)", category: "DOAC / Blood Thinner", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Preferred", paRequired: "Not Likely", paReason: "NYRx: Preferred agent.", alternatives: ["Eliquis"] },
+          "ALL": { tier: "Tier 2 or 3", paRequired: "Sometimes Required", paReason: "Formulary dependent. If non-preferred, Step Therapy requires trial of Eliquis.", alternatives: ["Eliquis"] }
+        }
+      },
+
+      // Pain Management & Opioids
+      "norco": {
+        name: "Norco (hydrocodone/APAP)", category: "Short-Acting Opioid (IR)", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Preferred", paRequired: "Sometimes Required", paReason: "NYRx: Limited to 4 opioid Rx/30 days. PA required if >90 MME/day or coprescribed with benzodiazepines. Exemptions: Cancer, Sickle Cell, Hospice.", alternatives: ["NSAIDs", "APAP"] },
+          "ALL": { tier: "Tier 1", paRequired: "Sometimes Required", paReason: "Opioid-Naive: strictly limited to 3-7 day supply. PA required for >7 days, >90 MME/day, or concurrent benzodiazepine use. Exemptions apply for cancer/hospice.", alternatives: ["NSAIDs", "APAP"] }
+        }
+      },
+      "roxicodone": {
+        name: "Roxicodone (oxycodone IR)", category: "Short-Acting Opioid (IR)", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Preferred", paRequired: "Sometimes Required", paReason: "NYRx: Limited to 4 opioid Rx/30 days. PA required if >90 MME/day or coprescribed with benzodiazepines. Exemptions: Cancer, Sickle Cell, Hospice.", alternatives: ["NSAIDs"] },
+          "ALL": { tier: "Tier 1", paRequired: "Sometimes Required", paReason: "Opioid-Naive: strictly limited to 3-7 day supply. PA required for >7 days, >90 MME/day, or concurrent benzodiazepine use. Exemptions apply for cancer/hospice.", alternatives: ["NSAIDs"] }
+        }
+      },
+      "xtampza": {
+        name: "Xtampza ER (oxycodone ER)", category: "Extended-Release Opioid (Abuse-Deterrent)", isSpecialty: false,
+        payers: {
+          "ALL": { tier: "Tier 2 or 3", paRequired: "Highly Likely", paReason: "Strict PA. Commercial plans require Step Therapy (failing generic Morphine ER first). Requires proof of chronic pain and IR opioid use for 7-10 days. Hard PA at 200 MME/day.", alternatives: ["morphine ER"] }
+        }
+      },
+      "morphine er": {
+         name: "Morphine ER (MS Contin)", category: "Extended-Release Opioid (ER/LA)", isSpecialty: false,
+         payers: {
+           "ALL": { tier: "Tier 1 (Preferred Generic)", paRequired: "Likely Required", paReason: "PA required to confirm chronic pain and prior IR opioid use for 7-10 days. >90 MME triggers soft edit; >200 MME triggers hard PA.", alternatives: ["oxycodone ER"] }
+         }
+      },
+      "oxycontin": {
+        name: "OxyContin (oxycodone ER)", category: "Long-Acting Opioid", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Non-Preferred", paRequired: "Highly Likely", paReason: "NYRx: PA required for long-acting opioids. Must prove trial of short-acting opioids and lack of alternatives.", alternatives: ["morphine ER", "fentanyl patch"] },
+          "ALL": { tier: "Tier 3", paRequired: "Highly Likely", paReason: "PA required. Requires documentation of chronic pain and proof patient has been taking IR opioids for at least 7-10 days. Hard PA triggered at 200 MME/day.", alternatives: ["morphine ER"] }
+        }
+      },
+      "actiq": {
+         name: "Actiq / Subsys (Transmucosal Fentanyl)", category: "Transmucosal Fentanyl", isSpecialty: true,
+         payers: {
+           "ALL": { tier: "Specialty / Tier 3", paRequired: "Highly Likely", paReason: "Strict PA. Restricted EXCLUSIVELY to breakthrough cancer pain. Requires specialized REMS program enrollment.", alternatives: ["morphine IR"] }
+         }
+      },
+      "tramadol": {
+        name: "Tramadol (Ultram)", category: "Short-Acting Opioid Analgesic", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Preferred", paRequired: "Sometimes Required", paReason: "NYRx: Limited to 4 opioid prescriptions/30 days. PA required for use >90 MME/day or for patients <12 years old.", alternatives: ["NSAIDs", "APAP"] },
+          "ALL": { tier: "Tier 1", paRequired: "Sometimes Required", paReason: "No PA for <=7 day supply. PA required for >7 days or >90 MME/day. Coprescribing with benzodiazepines triggers PA.", alternatives: ["NSAIDs"] }
+        }
+      },
+      "lyrica": {
+        name: "Lyrica (pregabalin)", category: "Anticonvulsant / Neuropathic Pain", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Preferred with CC/FQ", paRequired: "Sometimes Required", paReason: "NYRx: PA required for initiation at >150mg/day if patient is on >50 MME/day of opioids. Max 600mg/day.", alternatives: ["gabapentin", "duloxetine"] },
+          "ALL": { tier: "Tier 2", paRequired: "Sometimes Required", paReason: "Step therapy required through gabapentin for some commercial plans.", alternatives: ["gabapentin"] }
+        }
+      },
+      "gabapentin": {
+        name: "Gabapentin (Neurontin)", category: "Anticonvulsant / Neuropathic Pain", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Preferred", paRequired: "Sometimes Required", paReason: "NYRx: PA required for initiation at >900mg/day if patient is on >50 MME/day of opioids.", alternatives: ["pregabalin"] },
+          "ALL": { tier: "Tier 1", paRequired: "Not Likely", paReason: "Standard zero-copay generic. Subject to state PMP/CSAA monitoring.", alternatives: ["pregabalin"] }
+        }
+      },
+      "lidoderm": {
+        name: "Lidoderm (lidocaine 5% patch)", category: "Topical Local Anesthetic", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Non-Preferred", paRequired: "Highly Likely", paReason: "NYRx: PA required. Max 3 patches/day. Typically restricted to Post-Herpetic Neuralgia (PHN).", alternatives: ["diclofenac gel", "gabapentin"] },
+          "EXCELLUS": { tier: "Tier 3", paRequired: "Highly Likely", paReason: "Requires diagnosis of Post-Herpetic Neuralgia. Excludes general back pain.", alternatives: ["oral NSAIDs", "gabapentin"] },
+          "ALL": { tier: "Tier 2/3", paRequired: "Highly Likely", paReason: "PA required to confirm PHN diagnosis. Max 3 patches per day.", alternatives: ["gabapentin"] }
+        }
+      },
+      "voltaren": {
+        name: "Diclofenac 1% Gel (Voltaren)", category: "Topical NSAID", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Preferred", paRequired: "Not Likely", paReason: "NYRx: Preferred topical NSAID. PA required if using 2 or more NSAIDs concurrently.", alternatives: ["oral NSAIDs"] },
+          "ALL": { tier: "OTC/Tier 1", paRequired: "Not Likely", paReason: "Available OTC or Tier 1 generic.", alternatives: ["oral ibuprofen", "naproxen"] }
+        }
+      },
+      "belbuca": {
+        name: "Belbuca (buprenorphine buccal)", category: "Long-Acting Opioid (Partial Agonist)", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Non-Preferred", paRequired: "Highly Likely", paReason: "NYRx: PA required. Limited to 4 opioid Rx / 30 days. Requires trial of preferred long-acting opioid if for non-cancer pain.", alternatives: ["buprenorphine patch (Butrans)"] },
+          "ALL": { tier: "Tier 3", paRequired: "Highly Likely", paReason: "PA required. Step therapy often requires failing other preferred NSAIDs or opioids first.", alternatives: ["morphine ER"] }
+        }
+      },
+      "butrans": {
+         name: "Butrans (buprenorphine patch)", category: "Buprenorphine (Pain)", isSpecialty: false,
+         payers: {
+           "ALL": { tier: "Tier 2 or 3", paRequired: "Likely Required", paReason: "PA required for chronic pain. Step therapy often requires failing preferred NSAIDs or other opioids first. Exemptions for cancer/palliative care.", alternatives: ["Belbuca", "NSAIDs"] }
+         }
+      },
+      "fentanyl patch": {
+         name: "Fentanyl Patch (Duragesic)", category: "Long-Acting Opioid", isSpecialty: false,
+         payers: {
+           "MEDICAID_NY": { tier: "Preferred", paRequired: "Sometimes Required", paReason: "NYRx: PA required if >90 MME/day or coprescribed with benzodiazepines. Must be opioid-tolerant.", alternatives: ["morphine ER"] },
+           "ALL": { tier: "Tier 1/2", paRequired: "Likely Required", paReason: "PA required to confirm chronic pain, opioid tolerance, and prior IR opioid use for 7-10 days. Hard PA triggered at 200 MME/day.", alternatives: ["morphine ER"] }
+         }
+      },
+      "ibuprofen": {
+         name: "Ibuprofen / Naproxen", category: "NSAID", isSpecialty: false,
+         payers: {
+           "MEDICAID_NY": { tier: "Preferred", paRequired: "Sometimes Required", paReason: "NYRx: PA required for patients utilizing two (2) or more NSAIDs concurrently.", alternatives: ["meloxicam"] },
+           "ALL": { tier: "Tier 1 / OTC", paRequired: "Not Likely", paReason: "Standard first-line therapy. Generally covered without PA. Higher Rx strengths may have quantity limits.", alternatives: ["meloxicam"] }
+         }
+      },
+      "meloxicam": {
+         name: "Meloxicam (Mobic)", category: "NSAID", isSpecialty: false,
+         payers: {
+           "MEDICAID_NY": { tier: "Preferred", paRequired: "Sometimes Required", paReason: "NYRx: PA required for patients utilizing two (2) or more NSAIDs concurrently.", alternatives: ["ibuprofen"] },
+           "ALL": { tier: "Tier 1", paRequired: "Not Likely", paReason: "Standard first-line therapy. Generic tablets covered without PA.", alternatives: ["naproxen"] }
+         }
+      },
+      "duloxetine": {
+         name: "Duloxetine (Cymbalta)", category: "SNRI / Neuropathic Pain", isSpecialty: false,
+         payers: {
+           "MEDICAID_NY": { tier: "Preferred", paRequired: "Not Likely", paReason: "NYRx: Preferred agent. DO (Dose Optimization) limits apply to certain strengths.", alternatives: ["gabapentin", "venlafaxine"] },
+           "ALL": { tier: "Tier 1 (Generic)", paRequired: "Not Likely", paReason: "Generally covered without PA for depression, anxiety, or neuropathic pain.", alternatives: ["gabapentin"] }
+         }
+      },
+
+      // MAT / Substance Use Disorder
+      "suboxone": {
+        name: "Suboxone (buprenorphine/naloxone)", category: "Medication Assisted Treatment (MAT)", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Preferred", paRequired: "Not Likely", paReason: "NYRx: Prior authorization will not be required for SUD treatment. Quantity limits apply (e.g., max 120 films/30 days depending on strength).", alternatives: ["Zubsolv", "Brixadi"] },
+          "ALL": { tier: "Tier 1/2", paRequired: "Not Likely", paReason: "No PA. Most payers have eliminated PA requirements for OUD formulations to comply with federal parity laws.", alternatives: ["Zubsolv"] }
+        }
+      },
+      "zubsolv": {
+         name: "Zubsolv (buprenorphine/naloxone)", category: "Buprenorphine (OUD)", isSpecialty: false,
+         payers: {
+           "ALL": { tier: "Tier 2 (Preferred Brand)", paRequired: "Not Likely", paReason: "No PA required. Payers have eliminated PA requirements for Opioid Use Disorder (OUD) to comply with federal parity laws.", alternatives: ["Suboxone"] }
+         }
+      },
+      "brixadi": {
+         name: "Brixadi (buprenorphine injection)", category: "Opioid Dependence (Injectable)", isSpecialty: true,
+         payers: {
+           "MEDICAID_NY": { tier: "Preferred", paRequired: "Not Likely", paReason: "NYRx: PA not required for MAT/SUD. Administered by healthcare professional.", alternatives: ["Sublocade", "Suboxone"] },
+           "ALL": { tier: "Specialty / Tier 2", paRequired: "Sometimes Required", paReason: "Covered under medical or pharmacy benefit depending on plan. PA may be needed to confirm OUD diagnosis.", alternatives: ["Sublocade"] }
+         }
+      },
+
+      // Migraine
+      "nurtec": {
+        name: "Nurtec ODT (rimegepant)", category: "CGRP Inhibitor (Migraine)", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Non-Preferred", paRequired: "Highly Likely", paReason: "NYRx F/Q/D: 24 units/40 days. CC: Confirm diagnosis. ST: Trial of a Triptan required for acute treatment. Trial of Monoclonal Antibody required for prevention.", alternatives: ["Ubrelvy", "Sumatriptan"] },
+          "ALL": { tier: "Tier 2 or 3", paRequired: "Sometimes Required", paReason: "Step therapy: Try 2 triptans first.", alternatives: ["Sumatriptan"] }
+        }
+      },
+      "ubrelvy": {
+        name: "Ubrelvy (ubrogepant)", category: "CGRP Inhibitor (Migraine)", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Preferred with ST", paRequired: "Likely Required", paReason: "NYRx ST: Trial of a product from Antimigraine Agents-Triptan class. F/Q/D: 16 units/30 days.", alternatives: ["Sumatriptan"] },
+          "ALL": { tier: "Tier 2", paRequired: "Sometimes Required", paReason: "Step therapy: Requires failure of 2 triptans.", alternatives: ["Nurtec ODT"] }
+        }
+      },
+      "aimovig": {
+        name: "Aimovig (erenumab)", category: "CGRP Monoclonal Antibody", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Preferred", paRequired: "Sometimes Required", paReason: "NYRx CC: Confirm diagnosis. F/Q/D: 1 syringe/30 days.", alternatives: ["Ajovy", "Emgality"] },
+          "ALL": { tier: "Tier 2", paRequired: "Highly Likely", paReason: "PA required to confirm chronic/episodic migraine diagnosis and failure of standard preventatives.", alternatives: ["Emgality"] }
+        }
+      },
+      "emgality": {
+        name: "Emgality (galcanezumab)", category: "CGRP Monoclonal Antibody", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Non-Preferred (100mg) / Preferred (120mg)", paRequired: "Likely Required", paReason: "NYRx F/Q/D: 120mg (2 syringes/30 days). CC: Confirm diagnosis.", alternatives: ["Aimovig", "Ajovy"] }
+        }
+      },
+      "sumatriptan": {
+        name: "Sumatriptan (Imitrex)", category: "Triptan (Migraine Abortive)", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Preferred", paRequired: "Sometimes Required", paReason: "NYRx: Preferred. F/Q/D limits apply (e.g., 9 units / 30 days for oral, 18 units / 30 days for nasal).", alternatives: ["rizatriptan"] },
+          "ALL": { tier: "Tier 1 (Generic)", paRequired: "Sometimes Required", paReason: "First-line abortive therapy. PA only required if exceeding standard quantity limits (usually 9 pills/month).", alternatives: ["rizatriptan"] }
+        }
+      },
+      "ajovy": {
+        name: "Ajovy (fremanezumab)", category: "CGRP Monoclonal Antibody", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Preferred", paRequired: "Sometimes Required", paReason: "NYRx CC: Confirm diagnosis. F/Q/D: 3 syringes/90 days.", alternatives: ["Aimovig", "Emgality"] },
+          "ALL": { tier: "Tier 2", paRequired: "Highly Likely", paReason: "PA required to confirm chronic/episodic migraine diagnosis and failure of standard preventatives (beta blockers, topiramate, etc.).", alternatives: ["Aimovig"] }
+        }
+      },
+
+      // Psychiatry, ADHD, & CNS
+      "adderall": {
+        name: "Adderall IR (amphetamine salts)", category: "CNS Stimulant (ADHD)", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Preferred (Generic)", paRequired: "Sometimes Required", paReason: "NYRx: PA required for < 6 yrs (needs behavioral therapy proof) or > 21 yrs (confirm ADHD/Narcolepsy). Max dosing limits apply (>60mg/day triggers PA).", alternatives: ["methylphenidate IR"] },
+          "ALL": { tier: "Tier 1 (Generic)", paRequired: "Sometimes Required", paReason: "PA required for adults > 21 to confirm DSM-5 ADHD/Narcolepsy. Step therapy for brands. Excludes weight loss/fatigue.", alternatives: ["methylphenidate IR"] }
+        }
+      },
+      "adderall xr": {
+        name: "Adderall XR (amphetamine salts ER)", category: "CNS Stimulant (ADHD)", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Non-Preferred (Brand) / Preferred (Generic)", paRequired: "Likely Required", paReason: "NYRx: Brand requires PA. PA required for adults > 21 or children < 6.", alternatives: ["Generic amphetamine ER", "Concerta"] },
+          "ALL": { tier: "Tier 1 (Gen) / Tier 3 (Brand)", paRequired: "Likely Required", paReason: "Brand requires Step Therapy (fail 1-2 generics). PA for adults > 21 to confirm DSM-5 diagnosis.", alternatives: ["Generic amphetamine ER"] }
+        }
+      },
+      "concerta": {
+        name: "Concerta (methylphenidate ER)", category: "CNS Stimulant (ADHD)", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Preferred (Generic)", paRequired: "Sometimes Required", paReason: "NYRx: PA required for < 6 yrs or > 21 yrs. Maximum dosing limits apply.", alternatives: ["Adderall XR generic"] },
+          "ALL": { tier: "Tier 1 (Gen) / Tier 3 (Brand)", paRequired: "Sometimes Required", paReason: "Step Therapy for brand. Age limits apply.", alternatives: ["dexmethylphenidate ER"] }
+        }
+      },
+      "vyvanse": {
+        name: "Vyvanse (lisdexamfetamine)", category: "CNS Stimulant (ADHD)", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Preferred (BLTG)", paRequired: "Sometimes Required", paReason: "NYRx: Confirm diagnosis. PA required for patients <3 years. DO limits apply. PA required if > 21 to confirm ADHD diagnosis.", alternatives: ["Adderall XR", "Concerta"] },
+          "ALL": { tier: "Tier 2 / 3", paRequired: "Sometimes Required", paReason: "Age limits apply (PA required if over 21 to confirm ADHD diagnosis and not for weight loss). Step therapy for brand.", alternatives: ["dexmethylphenidate ER", "generic lisdexamfetamine"] }
+        }
+      },
+      "mydayis": {
+        name: "Mydayis / Adzenys (Novel Delivery Stimulants)", category: "CNS Stimulant (ADHD)", isSpecialty: false,
+        payers: {
+          "ALL": { tier: "Tier 3 / Excluded", paRequired: "Highly Likely", paReason: "Strict PA. Requires documentation that patient cannot swallow standard pills or has failed multiple generic long-acting formulations.", alternatives: ["Generic Adderall XR"] }
+        }
+      },
+      "strattera": {
+        name: "Strattera (atomoxetine)", category: "Non-Stimulant (ADHD)", isSpecialty: false,
+        payers: {
+          "ALL": { tier: "Tier 1 (Generic)", paRequired: "Not Likely", paReason: "Generic non-stimulant usually does not require PA. Dose Optimization limits apply.", alternatives: ["Guanfacine ER"] }
+        }
+      },
+      "guanfacine er": {
+        name: "Guanfacine ER (Intuniv)", category: "Non-Stimulant (ADHD)", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Preferred (Generic)", paRequired: "Not Likely", paReason: "NYRx: Preferred generic. PA required for initial prescriptions for patients < 6 years.", alternatives: ["atomoxetine"] },
+          "ALL": { tier: "Tier 1 (Generic)", paRequired: "Not Likely", paReason: "Generally covered without PA for ADHD.", alternatives: ["atomoxetine"] }
+        }
+      },
+      "methylphenidate ir": {
+        name: "Methylphenidate IR (Ritalin)", category: "CNS Stimulant (ADHD)", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Preferred (Generic)", paRequired: "Sometimes Required", paReason: "NYRx: PA required for < 6 yrs or > 21 yrs. Maximum dosing limits apply.", alternatives: ["Adderall IR"] },
+          "ALL": { tier: "Tier 1 (Generic)", paRequired: "Sometimes Required", paReason: "PA required for adults > 21 to confirm DSM-5 ADHD/Narcolepsy.", alternatives: ["Adderall IR"] }
+        }
+      },
+      "vraylar": {
+        name: "Vraylar (cariprazine)", category: "Atypical Antipsychotic", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Preferred (with DO)", paRequired: "Sometimes Required", paReason: "NYRx ST: For indications other than MDD, trial of a preferred generic is required. DO limits apply. Min age: 18 years.", alternatives: ["aripiprazole", "risperidone"] },
+          "ALL": { tier: "Tier 3", paRequired: "Highly Likely", paReason: "Step therapy required through generic atypical antipsychotics.", alternatives: ["aripiprazole"] }
+        }
+      },
+      "trintellix": {
+        name: "Trintellix (vortioxetine)", category: "SSRI / Miscellaneous Antidepressant", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Non-Preferred", paRequired: "Highly Likely", paReason: "NYRx: PA required. Trial of preferred SSRI/SNRIs required. DO limits apply.", alternatives: ["escitalopram", "sertraline"] },
+          "ALL": { tier: "Tier 3", paRequired: "Likely Required", paReason: "Step therapy: Requires failure of 2+ generic SSRI/SNRIs.", alternatives: ["escitalopram"] }
+        }
+      },
+      "rexulti": {
+        name: "Rexulti (brexpiprazole)", category: "Atypical Antipsychotic", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Non-Preferred", paRequired: "Highly Likely", paReason: "NYRx: PA required for initial prescription. Min age: 13 years. DO limits apply.", alternatives: ["aripiprazole"] }
+        }
+      },
+      "caplyta": {
+        name: "Caplyta (lumateperone)", category: "Atypical Antipsychotic", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Non-Preferred", paRequired: "Highly Likely", paReason: "NYRx: PA required. Minimum age: 18 years.", alternatives: ["aripiprazole"] }
+        }
+      },
+      "aripiprazole": {
+        name: "Aripiprazole (Abilify)", category: "Atypical Antipsychotic", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Preferred (Generic)", paRequired: "Sometimes Required", paReason: "NYRx: Minimum age 6 years. PA required for >90 days of concurrent multiple oral antipsychotics.", alternatives: ["risperidone"] },
+          "ALL": { tier: "Tier 1 (Generic)", paRequired: "Not Likely", paReason: "Standard first-line atypical antipsychotic. Often required as step therapy before brands like Vraylar or Rexulti.", alternatives: ["risperidone"] }
+        }
+      },
+      "escitalopram": {
+        name: "Escitalopram (Lexapro)", category: "SSRI Antidepressant", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Preferred", paRequired: "Not Likely", paReason: "NYRx: Preferred agent. DO (Dose Optimization) limits apply.", alternatives: ["sertraline", "fluoxetine"] },
+          "ALL": { tier: "Tier 1 (Generic)", paRequired: "Not Likely", paReason: "First-line antidepressant. Covered without PA.", alternatives: ["sertraline"] }
+        }
+      },
+      "sertraline": {
+        name: "Sertraline (Zoloft)", category: "SSRI Antidepressant", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Preferred", paRequired: "Not Likely", paReason: "NYRx: Preferred agent.", alternatives: ["escitalopram", "fluoxetine"] },
+          "ALL": { tier: "Tier 1 (Generic)", paRequired: "Not Likely", paReason: "First-line antidepressant. Covered without PA.", alternatives: ["escitalopram"] }
+        }
+      },
+
+      // Respiratory
+      "albuterol": {
+        name: "Albuterol HFA (ProAir, Ventolin)", category: "SABA / Rescue Inhaler", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Preferred (BLTG)", paRequired: "Not Likely", paReason: "NYRx: Brand Ventolin HFA and ProAir HFA are Preferred over generics (BLTG program). Max 2 inhalers / 30 days.", alternatives: ["levalbuterol"] },
+          "ALL": { tier: "Tier 1", paRequired: "Not Likely", paReason: "Standard rescue inhaler. Specific brand preference (ProAir vs Ventolin) depends on PBM contract.", alternatives: ["levalbuterol"] }
+        }
+      },
+      "trelegy": {
+        name: "Trelegy Ellipta (fluticasone/umeclidinium/vilanterol)", category: "COPD/Asthma Triple Therapy", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Non-Preferred", paRequired: "Highly Likely", paReason: "NYRx: Trial of a preferred agent in the Corticosteroid/Beta2 Adrenergic Agent (Long-Acting) Combinations class required.", alternatives: ["Advair Diskus BLTG", "Symbicort BLTG"] },
+          "ALL": { tier: "Tier 3", paRequired: "Not Likely", paReason: "Preferred triple therapy for severe COPD on most plans.", alternatives: ["Breztri"] }
+        }
+      },
+      "symbicort": {
+        name: "Symbicort (budesonide/formoterol)", category: "ICS/LABA Inhaler", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Preferred (BLTG)", paRequired: "Not Likely", paReason: "NYRx: Brand Symbicort is Preferred under the BLTG program. Up to 8 inhalers every 180 days.", alternatives: ["Advair Diskus"] },
+          "ALL": { tier: "Tier 2", paRequired: "Not Likely", paReason: "Preferred ICS/LABA.", alternatives: ["Advair HFA"] }
+        }
+      },
+      "breo": {
+        name: "Breo Ellipta (fluticasone/vilanterol)", category: "ICS/LABA Inhaler", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Non-Preferred", paRequired: "Highly Likely", paReason: "NYRx: PA required. Minimum age applies based on strength (50/25mcg > 5yrs, 100/25mcg > 12yrs).", alternatives: ["Advair Diskus", "Symbicort"] }
+        }
+      },
+      "advair": {
+        name: "Advair Diskus / HFA (fluticasone/salmeterol)", category: "ICS/LABA Inhaler", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Preferred (BLTG)", paRequired: "Not Likely", paReason: "NYRx: Brand Advair is Preferred under the BLTG program. Generic fluticasone/salmeterol is non-preferred.", alternatives: ["Symbicort"] },
+          "ALL": { tier: "Tier 1/2", paRequired: "Not Likely", paReason: "Standard maintenance therapy for Asthma/COPD.", alternatives: ["Symbicort"] }
+        }
+      },
+      "breztri": {
+        name: "Breztri Aerosphere", category: "COPD Triple Therapy", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Non-Preferred", paRequired: "Highly Likely", paReason: "NYRx CC/ST: PA required for < 12 yrs. Trial of a preferred ICS/LABA combination required.", alternatives: ["Trelegy Ellipta", "Advair Diskus"] },
+          "ALL": { tier: "Tier 2 or 3", paRequired: "Sometimes Required", paReason: "Commercial plans may require step therapy through an ICS/LABA before approving triple therapy.", alternatives: ["Trelegy Ellipta"] }
+        }
+      },
+
+      // GI
+      "linzess": {
+        name: "Linzess (linaclotide)", category: "Guanylate Cyclase-C Agonist (IBS-C/CIC)", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Preferred with ST", paRequired: "Likely Required", paReason: "NYRx ST: For IBS-C, trial with a bulking agent and an osmotic laxative within 89 days of use. Qty Limit: 1 tablet/day.", alternatives: ["PEG 3350", "lubiprostone"] },
+          "ALL": { tier: "Tier 2", paRequired: "Not Likely", paReason: "Preferred agent for IBS-C.", alternatives: ["Amitiza"] }
+        }
+      },
+      "dexilant": {
+        name: "Dexilant (dexlansoprazole)", category: "Proton Pump Inhibitor (PPI)", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Non-Preferred", paRequired: "Highly Likely", paReason: "NYRx: PA required. Trial of preferred PPIs required.", alternatives: ["omeprazole", "pantoprazole"] }
+        }
+      },
+      "omeprazole": {
+        name: "Omeprazole (Prilosec)", category: "Proton Pump Inhibitor (PPI)", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Preferred (Rx)", paRequired: "Sometimes Required", paReason: "NYRx: Preferred agent. F/Q/D duration limits apply (e.g., 90 days for GERD, 365 days for maintenance, 14 days for H. pylori).", alternatives: ["pantoprazole"] },
+          "ALL": { tier: "Tier 1 / OTC", paRequired: "Not Likely", paReason: "Standard first-line therapy.", alternatives: ["pantoprazole"] }
+        }
+      },
+      "pantoprazole": {
+        name: "Pantoprazole (Protonix)", category: "Proton Pump Inhibitor (PPI)", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Preferred", paRequired: "Sometimes Required", paReason: "NYRx: Preferred agent. F/Q/D duration limits apply.", alternatives: ["omeprazole"] },
+          "ALL": { tier: "Tier 1", paRequired: "Not Likely", paReason: "Standard first-line therapy.", alternatives: ["omeprazole"] }
+        }
+      },
+
+      // Autoimmune & Derm (With Specialty Flags)
+      "skyrizi": {
+        name: "Skyrizi (risankizumab)", category: "Interleukin-23 Inhibitor", isSpecialty: true,
+        payers: {
+          "MEDICAID_NY": { tier: "Non-Preferred", paRequired: "Highly Likely", paReason: "NYRx CC: Confirm diagnosis. ST: Trial of a non-specific anti-inflammatory drug or DMARD required.", alternatives: ["Humira", "Tremfya"] },
+          "ALL": { tier: "Specialty", paRequired: "Highly Likely", paReason: "Clinical PA required for plaque psoriasis or Crohn's disease.", alternatives: ["Humira", "Stelara"] }
+        }
+      },
+      "rinvoq": {
+        name: "Rinvoq (upadacitinib)", category: "JAK Inhibitor", isSpecialty: true,
+        payers: {
+          "MEDICAID_NY": { tier: "Non-Preferred", paRequired: "Highly Likely", paReason: "NYRx CC: Confirm diagnosis. ST: Trial of a TNF inhibitor prior to treatment with a JAK inhibitor.", alternatives: ["Humira", "Enbrel"] },
+          "ALL": { tier: "Specialty Tier", paRequired: "Highly Likely", paReason: "PA required. Must try and fail a TNF blocker first.", alternatives: ["Humira"] }
+        }
+      },
+      "dupixent": {
+        name: "Dupixent (dupilumab)", category: "Interleukin Inhibitor", isSpecialty: true,
+        payers: {
+          "MEDICAID_NY": { tier: "Preferred (CC/ST)", paRequired: "Likely Required", paReason: "NYRx CC/ST: For Atopic Dermatitis, requires trial of a medium/high potency topical corticosteroid.", alternatives: ["Topical Corticosteroids"] },
+          "ALL": { tier: "Specialty", paRequired: "Highly Likely", paReason: "PA required. Must show failure of topical steroids for atopic dermatitis or inhaled steroids for asthma.", alternatives: ["Topical Corticosteroids"] }
+        }
+      },
+      "humira": {
+        name: "Humira (adalimumab)", category: "TNF Inhibitor", isSpecialty: true,
+        payers: {
+          "MEDICAID_NY": { tier: "Non-Preferred (Use Hadlima)", paRequired: "Highly Likely", paReason: "NYRx: Humira is non-preferred. Preferred biosimilar is Hadlima. Confirm diagnosis of FDA-approved indication.", alternatives: ["Hadlima"] },
+          "ALL": { tier: "Specialty / Tier 2", paRequired: "Highly Likely", paReason: "PA required to confirm diagnosis (RA, Psoriasis, Crohn's). Note: Many plans now mandate specific biosimilars (Amjevita, Cyltezo) over brand Humira.", alternatives: ["Amjevita", "Hadlima"] }
+        }
+      },
+      "enbrel": {
+        name: "Enbrel (etanercept)", category: "TNF Inhibitor", isSpecialty: true,
+        payers: {
+          "MEDICAID_NY": { tier: "Non-Preferred", paRequired: "Highly Likely", paReason: "NYRx: Non-preferred. Must trial preferred agents or biosimilars.", alternatives: ["Hadlima"] },
+          "ALL": { tier: "Specialty / Tier 2", paRequired: "Highly Likely", paReason: "PA required. Often a preferred biologic on commercial plans alongside Humira, but requires documentation of failed conventional therapies (Methotrexate).", alternatives: ["Humira"] }
+        }
+      },
+      "celebrex": {
+        name: "Celebrex (celecoxib)", category: "NSAID (COX-2 Inhibitor)", isSpecialty: false,
+        payers: {
+          "MEDICAID_NY": { tier: "Preferred", paRequired: "Sometimes Required", paReason: "NYRx: Preferred agent. PA required for patients utilizing two (2) or more NSAIDs concurrently.", alternatives: ["Ibuprofen", "Naproxen"] },
+          "ALL": { tier: "Tier 2", paRequired: "Not Likely", paReason: "Covered without PA on most plans.", alternatives: ["Meloxicam"] }
+        }
+      }
+    };
+
+    const copyBtnUI = (text, type) => `<button onclick="copyToClipboard('${text}', this)" title="Copy ${type}" class="ml-1.5 text-stone-400 hover:text-emerald-600 transition flex-shrink-0">📋</button>`;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      checkUserState();
+      filterProviders();
+      setupFormularySearch();
+      checkCustomDataCount();
+      updateFaxPreview();
+      renderNegotiations();
+      renderAdminFeedback();
+      updateAdminStats();
+      const faxDateEl = document.getElementById('faxDateDisplay');
+      if (faxDateEl) faxDateEl.innerText = "Date: " + new Date().toLocaleDateString('en-US');
+    });
+
+    function checkUserState() {
+      const savedState = localStorage.getItem('app_user_state');
+      if (savedState) {
+        const displayStateEl = document.getElementById('displayState');
+        if (displayStateEl) displayStateEl.innerText = savedState + " (Active)";
+        const stateSelect = document.getElementById('stateSelectInput');
+        if (stateSelect) stateSelect.value = savedState;
+      } else {
+        openStateModal();
+      }
+    }
+
+    function openStateModal() {
+      const modal = document.getElementById('stateModal');
+      if(modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        setTimeout(() => modal.classList.remove('opacity-0'), 10);
+      }
+    }
+
+    function saveStateSelection() {
+      const val = document.getElementById('stateSelectInput')?.value || 'NY';
+      localStorage.setItem('app_user_state', val);
+      const displayStateEl = document.getElementById('displayState');
+      if(displayStateEl) displayStateEl.innerText = val + " (Active)";
+      const modal = document.getElementById('stateModal');
+      if(modal) {
+        modal.classList.add('opacity-0');
+        setTimeout(() => {
+          modal.classList.add('hidden');
+          modal.classList.remove('flex');
+        }, 300);
+      }
+      filterProviders();
+    }
+
+    function switchTab(tabId, btn) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      const isNavTab = btn && btn.parentElement.id === 'mainNavigationTabs';
+      if (isNavTab) {
+        document.querySelectorAll('#mainNavigationTabs .tab-btn').forEach(el => el.classList.remove('active'));
+      }
+      const target = document.getElementById(tabId);
+      if(target) target.classList.remove('hidden');
+      if(btn) btn.classList.add('active');
+    }
+
+    function getAllProviders() {
+      const customRaw = localStorage.getItem('app_custom_providers');
+      let customProviders = [];
+      if (customRaw) {
+        try { customProviders = JSON.parse(customRaw); } catch(e) {}
+      }
+      return [...ROCKLAND_PROVIDERS, ...INSURANCE_PROVIDERS, ...customProviders];
+    }
+
+    function filterProviders() {
+      const activeState = localStorage.getItem('app_user_state') || 'NY';
+      const searchInput = document.getElementById('providerSearchInput');
+      const countyFilter = document.getElementById('countyFilter');
+      
+      const search = searchInput ? searchInput.value.toLowerCase().trim() : '';
+      const county = countyFilter ? countyFilter.value : 'ALL';
+
+      const filtered = getAllProviders().filter(p => {
+        if (p.state && p.state.toUpperCase() !== activeState.toUpperCase() && p.county !== 'ALL') return false;
+        if (county !== 'ALL' && p.county && p.county.toUpperCase() !== 'ALL' && p.county.toLowerCase() !== county.toLowerCase()) return false;
+
+        if (search) {
+          return (p.name || '').toLowerCase().includes(search) ||
+                 (p.npi || '').includes(search) ||
+                 (p.specialty || '').toLowerCase().includes(search) ||
+                 (p.city || '').toLowerCase().includes(search) ||
+                 (p.fax || '').includes(search);
+        }
+        return true;
+      });
+
+      renderProviders(filtered);
+    }
+
+    function resetFilters() {
+      const searchInput = document.getElementById('providerSearchInput');
+      const countyFilter = document.getElementById('countyFilter');
+      if(searchInput) searchInput.value = '';
+      if(countyFilter) countyFilter.value = 'ALL';
+      filterProviders();
+    }
+
+    function renderProviders(list) {
+      const container = document.getElementById('providerGrid');
+      const countEl = document.getElementById('providerCount');
+      if(countEl) countEl.innerText = `Showing ${list.length} record(s) in active region`;
+      if(!container) return;
+
+      if (list.length === 0) {
+        container.innerHTML = `
+          <div class="col-span-full card-nordic p-10 text-center">
+            <p class="text-stone-500 mb-4 text-sm font-medium">No records found matching your search criteria.</p>
+            <button onclick="resetFilters()" class="btn-nordic-primary px-5 py-2.5 text-xs font-bold rounded-xl shadow-md">Clear Search Filters</button>
+          </div>`;
+        return;
+      }
+
+      container.innerHTML = list.map(p => `
+        <div class="card-nordic p-7 flex flex-col justify-between">
+          <div>
+            <div class="flex justify-between items-start gap-3 mb-3">
+              <h3 class="font-bold text-lg text-emerald-950 leading-snug tracking-tight">${p.name}</h3>
+              ${p.isCustom ? '<span class="text-[10px] font-extrabold px-2.5 py-1 rounded-lg bg-amber-100/80 text-amber-900 border border-amber-200/50">Custom</span>' : ''}
+              ${p.isInsurance ? '<span class="text-[10px] font-extrabold px-2.5 py-1 rounded-lg bg-sky-100/80 text-sky-900 border border-sky-200/50 flex-shrink-0">Insurance / PBM</span>' : ''}
+            </div>
+            <p class="text-sm font-semibold text-emerald-700 mb-4">${p.specialty}</p>
+            <div class="text-xs space-y-2 text-stone-600">
+              <p class="flex items-center">🆔 <strong class="text-stone-500 font-medium ml-1">NPI/ID:</strong> <span class="font-mono text-stone-900 ml-1">${p.npi || 'N/A'}</span> ${(p.npi && p.npi !== 'N/A') ? copyBtnUI(p.npi, 'NPI') : ''}</p>
+              <p>📍 <strong class="text-stone-500 font-medium">Address:</strong> ${p.address}, ${p.city}, ${p.state} ${p.zip}</p>
+              <p class="flex items-center">📞 <strong class="text-stone-500 font-medium ml-1">Phone:</strong> <span class="text-stone-900 ml-1">${p.phone || 'N/A'}</span> ${(p.phone && p.phone !== 'N/A') ? copyBtnUI(p.phone, 'Phone') : ''}</p>
+              <p class="flex items-center">📠 <strong class="text-stone-500 font-medium ml-1">Fax:</strong> <span class="font-bold text-emerald-900 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-100 ml-1">${p.fax || 'N/A'}</span> ${(p.fax && p.fax !== 'N/A') ? copyBtnUI(p.fax, 'Fax') : ''}</p>
+              ${p.acceptedPlans ? `<div class="mt-2 p-2 bg-stone-50 rounded-lg border border-stone-200 text-[11px] font-medium text-stone-700">🏥 <strong>Insurance:</strong> ${p.acceptedPlans}</div>` : ''}
+            </div>
+          </div>
+          <div class="mt-5 pt-4 border-t border-stone-100 flex items-center justify-between text-[11px] font-semibold text-stone-400">
+            <span>📍 ${p.county === 'ALL' ? 'National / Regional' : (p.county || 'Rockland') + ' County'}</span>
+            <span class="text-emerald-600">Verified</span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function setupFormularySearch() {
+      const box = document.getElementById('formularySearchBox');
+      const payerSelect = document.getElementById('payerSelect');
+      if (!box) return;
+
+      if (!window.medSearchLog) window.medSearchLog = [];
+
+      const runSearch = async () => {
+        let q = box.value.trim().toLowerCase();
+        const selectedPayer = payerSelect ? payerSelect.value : 'EXCELLUS';
+        const container = document.getElementById('formularyResultsContainer');
+        if(!container) return;
+
+        if (q.length < 2) {
+          container.innerHTML = '<p class="text-xs text-stone-500 italic bg-stone-50/50 p-6 rounded-2xl border border-stone-100 text-center">Select an insurance payer and type a medication name above to inspect formulary status and PA guidelines...</p>';
+          return;
+        }
+
+        container.innerHTML = '<p class="text-xs text-stone-500 italic bg-stone-50/50 p-6 rounded-2xl border border-stone-100 text-center animate-pulse">Querying payer formulary database & RxNorm API...</p>';
+
+        let searchTerms = [q];
+        for (let generic in THESAURUS) {
+           if (q.includes(generic) || generic.includes(q)) {
+               searchTerms.push(...THESAURUS[generic]);
+           }
+        }
+        
+        let matchedKey = Object.keys(PAYER_FORMULARY_DATABASE).find(k => {
+           return searchTerms.some(term => k.includes(term) || term.includes(k));
+        });
+        
+        let formularyDetailsHtml = '';
+        if (matchedKey) {
+          const medData = PAYER_FORMULARY_DATABASE[matchedKey];
+          
+          let isExactMatch = !!medData.payers[selectedPayer];
+          const payerInfo = medData.payers[selectedPayer] || medData.payers['ALL'] || {
+            tier: "Tier 3 (Standard Brand)",
+            paRequired: "Likely Required",
+            paReason: "Standard prior authorization required for non-preferred or specialty tier.",
+            alternatives: ["Generic Equivalent", "Therapeutic Alternative"]
+          };
+
+          let matchBadge = isExactMatch 
+            ? `<span class="text-[10px] font-extrabold px-2 py-0.5 rounded text-sky-800 bg-sky-100 border border-sky-200">✅ Exact Payer Match</span>`
+            : `<span class="text-[10px] font-extrabold px-2 py-0.5 rounded text-stone-600 bg-stone-100 border border-stone-200">⚠️ General Commercial Guidelines Applied</span>`;
+
+          let processedAlternatives = payerInfo.alternatives.map(alt => {
+             let altName = alt.toLowerCase();
+             let previouslySearched = window.medSearchLog.some(pastMed => altName.includes(pastMed) || pastMed.includes(altName));
+             if (previouslySearched) {
+                 return `${alt} (Already Searched - Mutually Preferred)`;
+             }
+             return alt;
+          });
+
+          if (!window.medSearchLog.includes(matchedKey)) {
+              window.medSearchLog.push(matchedKey);
+          }
+
+          const isPALikely = payerInfo.paRequired.includes("Likely") || payerInfo.paRequired.includes("Required");
+          const badgeColor = isPALikely ? "bg-amber-50 text-amber-800 border-amber-200/60" : "bg-emerald-50 text-emerald-800 border-emerald-200/60";
+
+          // Log the event to GA4 if initialized
+          if(typeof gtag === 'function') {
+            gtag('event', 'formulary_searched', {
+              'medication': q,
+              'payer': selectedPayer
+            });
+          }
+
+          formularyDetailsHtml = `
+            <div class="card-nordic p-8 border-t-4 border-t-emerald-600 space-y-6">
+              <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-stone-100 pb-4">
+                <div>
+                  <h4 class="text-lg font-bold text-emerald-950 flex items-center gap-2">
+                    <span>💊</span> ${medData.name}
+                  </h4>
+                  <div class="flex items-center gap-2 mt-1">
+                    <p class="text-xs text-stone-500 font-medium">Therapeutic Category: <strong class="text-stone-700">${medData.category}</strong></p>
+                    ${matchBadge}
+                  </div>
+                </div>
+                <span class="text-xs font-black px-4 py-1.5 rounded-full border shadow-sm ${badgeColor}">
+                  ${payerInfo.paRequired}
+                </span>
+              </div>
+
+              ${medData.isSpecialty ? `
+                <div class="p-4 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-900 font-bold flex items-center gap-2">
+                  <span>🚨</span> SPECIALTY MEDICATION WARNING: Do not route to retail pharmacy. Must be submitted directly to a Specialty Pharmacy (e.g., CVS Specialty, Accredo, AllianceRx).
+                </div>
+              ` : ''}
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-5 text-sm">
+                <div class="bg-stone-50/70 p-4 rounded-xl border border-stone-100">
+                  <span class="block text-stone-400 uppercase font-bold text-[10px] mb-1.5">Formulary Tier Status</span>
+                  <strong class="text-emerald-900 text-base">${payerInfo.tier}</strong>
+                </div>
+                <div class="bg-stone-50/70 p-4 rounded-xl border border-stone-100">
+                  <span class="block text-stone-400 uppercase font-bold text-[10px] mb-1.5">Preferred Alternatives</span>
+                  <strong class="text-stone-800">${processedAlternatives.join(', ')}</strong>
+                </div>
+              </div>
+              <div class="p-5 bg-emerald-50/40 border border-emerald-100/60 rounded-xl text-sm space-y-2">
+                <span class="font-bold text-emerald-800 uppercase text-[10px] block tracking-wider">Payer Clinical Guidelines:</span>
+                <p class="text-stone-700 leading-relaxed">${payerInfo.paReason}</p>
+              </div>
+              <div class="flex gap-3 pt-2">
+                <button onclick="transferToFaxStudio('${medData.name}')" class="btn-nordic-primary px-5 py-3 text-xs font-bold rounded-xl shadow-md flex items-center gap-2">
+                  <span>📠</span> Generate Fax & PA Request
+                </button>
+              </div>
+            </div>`;
+        } else {
+          formularyDetailsHtml = `
+            <div class="card-nordic p-8 text-center space-y-4">
+              <p class="text-sm text-stone-600 font-bold">No custom payer rule mapped for "${q}".</p>
+              <button onclick="transferToFaxStudio('${box.value}')" class="btn-nordic-primary px-5 py-2.5 text-xs font-bold rounded-xl shadow-md">
+                Proceed to Fax Studio for "${box.value}"
+              </button>
+            </div>`;
+        }
+        
+        try {
+          const res = await fetch(`https://rxnav.nlm.nih.gov/REST/drugs.json?name=${encodeURIComponent(q)}`);
+          const data = await res.json();
+          const groups = data.drugGroup?.conceptGroup || [];
+          let rxItems = [];
+          groups.forEach(g => {
+            if (g.conceptProperties) {
+              g.conceptProperties.forEach(cp => rxItems.push(cp.name));
+            }
+          });
+
+          if (rxItems.length > 0 && !matchedKey) {
+            container.innerHTML = formularyDetailsHtml + `
+              <div class="card-nordic p-6 space-y-3 mt-6">
+                <h4 class="text-xs font-bold uppercase tracking-wider text-emerald-800 mb-3">National Library of Medicine (RxNorm) Matches</h4>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  ${rxItems.slice(0, 4).map(item => `
+                    <div class="p-3 rounded-xl bg-stone-50 border border-stone-100 text-xs font-semibold text-stone-700 flex justify-between items-center shadow-sm">
+                      <span>💊 ${item}</span>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>`;
+          } else {
+            container.innerHTML = formularyDetailsHtml;
+          }
+        } catch(e) {
+          container.innerHTML = formularyDetailsHtml;
+        }
+      };
+
+      box.addEventListener('input', runSearch);
+      if (payerSelect) payerSelect.addEventListener('change', runSearch);
+    }
+
+    function transferToFaxStudio(medName) {
+      switchTab('faxStudioTab', document.querySelectorAll('#mainNavigationTabs .tab-btn')[2]);
+      const medInput = document.getElementById('paMedication');
+      if (medInput) {
+        medInput.value = medName;
+        updateFaxPreview();
+      }
+    }
+
+    function autofillPayerFax() {
+      const selectEl = document.getElementById('payerDirectorySelect');
+      const faxInput = document.getElementById('paDestinationFax');
+      const phoneDisplay = document.getElementById('payerSupportPhone');
+      
+      if(!selectEl || !faxInput || !phoneDisplay) return;
+      
+      const selectedOption = selectEl.options[selectEl.selectedIndex];
+      const phoneNumber = selectedOption.getAttribute('data-phone');
+      
+      faxInput.value = selectEl.value;
+      
+      if (phoneNumber && phoneNumber !== "N/A" && phoneNumber !== "") {
+        phoneDisplay.innerHTML = `Support Phone: <span class="font-bold text-emerald-900">${phoneNumber}</span>`;
+        phoneDisplay.classList.remove('hidden');
+      } else {
+        phoneDisplay.classList.add('hidden');
+      }
+      
+      updateFaxPreview();
+    }
+
+    function updateFaxPreview() {
+      const setVal = (id, val) => { const el = document.getElementById(id); if(el) el.innerText = val; };
+      setVal('prevDestinationFax', document.getElementById('paDestinationFax')?.value || "____________________");
+      setVal('prevProviderName', document.getElementById('paProviderName')?.value || "____________________");
+      setVal('prevProviderNPI', document.getElementById('paProviderNPI')?.value || "__________");
+      setVal('prevProviderFax', document.getElementById('paProviderFax')?.value || "____________________");
+      setVal('prevMedication', document.getElementById('paMedication')?.value || "____________________");
+      setVal('prevDose', document.getElementById('paDose')?.value || "__________");
+      setVal('prevQuantity', document.getElementById('paQuantity')?.value || "__________");
+      setVal('prevSig', document.getElementById('paSig')?.value || "________________________________________");
+      setVal('prevDiagnosis', document.getElementById('paDiagnosis')?.value || "[ Free text diagnosis and rationale will render here ]");
+    }
+
+    function printPaDocument() {
+      if(typeof gtag === 'function') {
+        gtag('event', 'fax_generated', {
+          'medication': document.getElementById('paMedication')?.value || 'Unknown',
+          'destination_payer': document.getElementById('payerDirectorySelect')?.value || 'Custom'
+        });
+      }
+      window.print();
+    }
+
+    function generateCMMKey() {
+      let result = 'CMM-';
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      for (let i = 0; i < 8; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
+      const keyDisp = document.getElementById('cmmKeyDisplay');
+      if (keyDisp) keyDisp.innerText = result;
+    }
+
+    function copyCMMData() {
+      const key = document.getElementById('cmmKeyDisplay')?.innerText || 'CMM-PENDING';
+      const med = document.getElementById('paMedication')?.value || "N/A";
+      const payload = `CoverMyMeds Key: ${key}\nMedication: ${med}`;
+      const tempTextArea = document.createElement('textarea');
+      tempTextArea.value = payload;
+      document.body.appendChild(tempTextArea);
+      tempTextArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(tempTextArea);
+      alert('CoverMyMeds PA payload copied!');
+    }
+
+    function initiateCoverMyMeds() {
+      generateCMMKey();
+      window.open('https://www.covermymeds.com/main/', '_blank');
+    }
+
+    function setBillingCycle(cycle) {
+      const monthlyBtn = document.getElementById('billingMonthlyBtn');
+      const yearlyBtn = document.getElementById('billingYearlyBtn');
+      
+      const priceClinician = document.getElementById('priceClinician');
+      const cycleClinician = document.getElementById('cycleClinician');
+      const priceGroup = document.getElementById('priceGroup');
+      const cycleGroup = document.getElementById('cycleGroup');
+      const priceEnterprise = document.getElementById('priceEnterprise');
+      const cycleEnterprise = document.getElementById('cycleEnterprise');
+
+      if (cycle === 'monthly') {
+        monthlyBtn.className = "px-5 py-2.5 text-xs font-bold rounded-lg transition-all shadow-sm bg-white text-emerald-900";
+        yearlyBtn.className = "px-5 py-2.5 text-xs font-bold rounded-lg transition-all text-stone-500 hover:text-stone-900";
+        if(priceClinician) priceClinician.innerText = "$29";
+        if(cycleClinician) cycleClinician.innerText = "/ month";
+        if(priceGroup) priceGroup.innerText = "$89";
+        if(cycleGroup) cycleGroup.innerText = "/ month";
+        if(priceEnterprise) priceEnterprise.innerText = "$299";
+        if(cycleEnterprise) cycleEnterprise.innerText = "/ month";
+      } else {
+        yearlyBtn.className = "px-5 py-2.5 text-xs font-bold rounded-lg transition-all shadow-sm bg-white text-emerald-900";
+        monthlyBtn.className = "px-5 py-2.5 text-xs font-bold rounded-lg transition-all text-stone-500 hover:text-stone-900";
+        if(priceClinician) priceClinician.innerText = "$278";
+        if(cycleClinician) cycleClinician.innerText = "/ year";
+        if(priceGroup) priceGroup.innerText = "$854";
+        if(cycleGroup) cycleGroup.innerText = "/ year";
+        if(priceEnterprise) priceEnterprise.innerText = "$2,870";
+        if(cycleEnterprise) cycleEnterprise.innerText = "/ year";
+      }
+    }
+
+    function openEnterpriseNegotiationModal() {
+      const modal = document.getElementById('negotiationModal');
+      if(modal) { modal.classList.remove('hidden'); modal.classList.add('flex'); }
+    }
+
+    function closeEnterpriseNegotiationModal() {
+      const modal = document.getElementById('negotiationModal');
+      if(modal) { modal.classList.add('hidden'); modal.classList.remove('flex'); }
+    }
+
+    function handleNegotiationSubmit(e) {
+      e.preventDefault();
+      const org = document.getElementById('negOrgName').value;
+      const contact = document.getElementById('negContactName').value;
+      const newNeg = { id: 'NEG-' + Math.floor(1000 + Math.random() * 9000), org, contact, status: 'Pending' };
+      const existing = JSON.parse(localStorage.getItem('app_enterprise_negotiations') || '[]');
+      localStorage.setItem('app_enterprise_negotiations', JSON.stringify([newNeg, ...existing]));
+      closeEnterpriseNegotiationModal();
+      renderNegotiations();
+      alert("Proposal submitted to Admin.");
+    }
+
+    function renderNegotiations() {
+      const container = document.getElementById('negotiationListContainer');
+      if(!container) return;
+      let list = JSON.parse(localStorage.getItem('app_enterprise_negotiations') || '[]');
+      if(list.length === 0) {
+        container.innerHTML = `<div class="p-4 rounded-xl bg-white/50 border border-stone-200/50 text-xs text-stone-500 italic text-center">No pending quotes.</div>`;
+        return;
+      }
+      container.innerHTML = list.map(n => `
+        <div class="p-4 rounded-xl bg-white shadow-sm border-none flex justify-between items-center text-xs">
+          <div><span class="font-bold text-emerald-950">${n.org}</span> <span class="text-stone-500 ml-1">(${n.status})</span></div>
+        </div>
+      `).join('');
+    }
+
+    function openAdminAuthModal() {
+      const modal = document.getElementById('adminAuthModal');
+      const content = document.getElementById('adminAuthContent');
+      if (!modal || !content) return;
+
+      const savedPassword = localStorage.getItem('app_admin_password');
+
+      if (!savedPassword) {
+        content.innerHTML = `
+          <h3 class="text-xl font-bold text-emerald-950 mb-2">🛡️ Create Admin Password</h3>
+          <p class="text-sm text-stone-500 mb-6">Set a secure password to protect the analytics and feedback dashboard.</p>
+          <form onsubmit="handleAdminPasswordSetup(event)" class="space-y-4">
+            <input type="password" id="newAdminPass" required placeholder="Enter secure password" class="w-full px-4 py-3.5 text-sm rounded-xl border border-stone-200 bg-stone-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 outline-none transition">
+            <button type="submit" class="btn-nordic-primary w-full py-3.5 font-bold text-sm rounded-xl shadow-lg">Save Password</button>
+          </form>
+        `;
+      } else {
+        content.innerHTML = `
+          <h3 class="text-xl font-bold text-emerald-950 mb-2">🔒 Enter Admin Password</h3>
+          <p class="text-sm text-stone-500 mb-6">Authenticate to access the backend control panel.</p>
+          <form onsubmit="handleAdminLogin(event)" class="space-y-4">
+            <input type="password" id="loginAdminPass" required placeholder="Enter admin password" class="w-full px-4 py-3.5 text-sm rounded-xl border border-stone-200 bg-stone-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 outline-none transition">
+            <button type="button" onclick="resetAdminPasswordPrompt()" class="text-xs text-stone-500 hover:text-stone-700 underline mb-2 block">Reset Password</button>
+            <button type="submit" class="btn-nordic-primary w-full py-3.5 font-bold text-sm rounded-xl shadow-lg">Login</button>
+          </form>
+        `;
+      }
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeAdminAuthModal() {
+      const modal = document.getElementById('adminAuthModal');
+      if (modal) { modal.classList.add('hidden'); modal.classList.remove('flex'); }
+    }
+
+    function handleAdminPasswordSetup(e) {
+      e.preventDefault();
+      const p1 = document.getElementById('newAdminPass').value;
+      localStorage.setItem('app_admin_password', p1);
+      closeAdminAuthModal();
+      toggleAdminMode(true);
+    }
+
+    function handleAdminLogin(e) {
+      e.preventDefault();
+      const val = document.getElementById('loginAdminPass').value;
+      if (val === localStorage.getItem('app_admin_password')) {
+        closeAdminAuthModal();
+        toggleAdminMode(true);
+      } else {
+        alert("Incorrect Password");
+      }
+    }
+
+    function resetAdminPasswordPrompt() {
+      if (confirm("Reset admin password?")) {
+        localStorage.removeItem('app_admin_password');
+        openAdminAuthModal();
+      }
+    }
+
+    function toggleAdminMode(forceState) {
+      isAdminMode = forceState !== undefined ? forceState : !isAdminMode;
+      const importBtn = document.getElementById('adminImportBtn');
+      const dashboardTabBtn = document.getElementById('adminDashboardTabBtn');
+      
+      const mainNav = document.getElementById('mainNavigationTabs');
+      const adminNav = document.getElementById('adminNavigationTabs');
+
+      if (isAdminMode) {
+        if (importBtn) importBtn.classList.remove('hidden');
+        if (mainNav) mainNav.classList.add('hidden');
+        if (adminNav) adminNav.classList.remove('hidden');
+        switchTab('adminDashboardTab', dashboardTabBtn);
+        updateAdminStats();
+        renderAdminFeedback();
+      } else {
+        if (importBtn) importBtn.classList.add('hidden');
+        if (mainNav) mainNav.classList.remove('hidden');
+        if (adminNav) adminNav.classList.add('hidden');
+        switchTab('directoryTab', document.querySelectorAll('#mainNavigationTabs .tab-btn')[0]);
+      }
+    }
+
+    function updateAdminStats() {
+      let fList = JSON.parse(localStorage.getItem('app_user_feedback') || '[]');
+      let cList = JSON.parse(localStorage.getItem('app_custom_providers') || '[]');
+      const fCount = document.getElementById('statFeedbackCount');
+      const cCount = document.getElementById('statCustomCount');
+      if (fCount) fCount.innerText = fList.length;
+      if (cCount) cCount.innerText = cList.length;
+    }
+
+    function renderAdminFeedback() {
+      const container = document.getElementById('adminFeedbackListContainer');
+      if (!container) return;
+      let list = JSON.parse(localStorage.getItem('app_user_feedback') || '[]');
+      if (list.length === 0) {
+        container.innerHTML = `<div class="p-5 rounded-2xl bg-stone-50 border border-stone-200/60 text-sm text-stone-500 text-center">No feedback submissions.</div>`;
+        return;
+      }
+      container.innerHTML = list.map((item, idx) => `
+        <div class="p-5 rounded-2xl bg-white shadow-sm border-none flex justify-between items-center text-sm">
+          <div><span class="font-bold text-emerald-800 mr-2">[${item.type}]</span> <span class="text-stone-700">${item.details}</span></div>
+          <button onclick="deleteFeedbackItem(${idx})" class="text-rose-600 hover:text-rose-800 font-bold bg-rose-50 px-3 py-1.5 rounded-lg transition">Dismiss</button>
+        </div>
+      `).join('');
+    }
+
+    function deleteFeedbackItem(index) {
+      let list = JSON.parse(localStorage.getItem('app_user_feedback') || '[]');
+      list.splice(index, 1);
+      localStorage.setItem('app_user_feedback', JSON.stringify(list));
+      renderAdminFeedback();
+      updateAdminStats();
+    }
+
+    function clearAllFeedback() {
+      if(confirm("Clear all feedback?")) {
+        localStorage.removeItem('app_user_feedback');
+        renderAdminFeedback();
+        updateAdminStats();
+      }
+    }
+
+    function openImportModal() {
+      const modal = document.getElementById('importModal');
+      if(modal) { modal.classList.remove('hidden'); modal.classList.add('flex'); }
+    }
+
+    function closeImportModal() {
+      const modal = document.getElementById('importModal');
+      if(modal) { modal.classList.add('hidden'); modal.classList.remove('flex'); }
+    }
+
+    function handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const status = document.getElementById('importStatus');
+      if(status) {
+        status.classList.remove('hidden');
+        status.className = "mt-5 p-4 rounded-xl text-sm font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 text-center";
+        status.innerText = "Parsing external dataset...";
+      }
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: "" });
+
+          const parsed = rows.map(r => ({
+            name: r["Name"] || r["Provider Name"] || r["Doctor Name"] || r["NAME"] || "",
+            npi: String(r["NPI"] || r["Npi"] || r["Provider NPI"] || ""),
+            specialty: r["Specialty"] || r["SPECIALTY"] || "General Practice",
+            address: r["Address"] || r["ADDRESS"] || "",
+            city: r["City"] || "Nyack",
+            county: r["County"] || "Rockland",
+            state: r["State"] || "NY",
+            zip: String(r["Zip"] || "10960"),
+            phone: String(r["Phone"] || ""),
+            fax: String(r["Fax"] || ""),
+            isCustom: true
+          })).filter(p => p.name || p.npi);
+
+          const existing = JSON.parse(localStorage.getItem('app_custom_providers') || '[]');
+          localStorage.setItem('app_custom_providers', JSON.stringify([...existing, ...parsed]));
+
+          if(status) {
+            status.className = "mt-5 p-4 rounded-xl text-sm font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 text-center";
+            status.innerText = `Success! Imported ${parsed.length} providers from ${file.name}.`;
+          }
+          checkCustomDataCount();
+          setTimeout(() => { closeImportModal(); filterProviders(); }, 2000);
+
+        } catch (err) {
+          if(status) {
+            status.className = "mt-5 p-4 rounded-xl text-sm font-semibold bg-rose-50 text-rose-800 border border-rose-200 text-center";
+            status.innerText = "Error parsing file.";
+          }
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function checkCustomDataCount() {
+      const raw = localStorage.getItem('app_custom_providers');
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw);
+          if (parsed.length > 0) {
+            const countEl = document.getElementById('customDataCount');
+            const bannerEl = document.getElementById('customDataBanner');
+            if(countEl) countEl.innerText = parsed.length;
+            if(bannerEl) bannerEl.classList.remove('hidden');
+            return;
+          }
+        } catch(e) {}
+      }
+      const bannerEl = document.getElementById('customDataBanner');
+      if(bannerEl) bannerEl.classList.add('hidden');
+    }
+
+    function clearCustomData() {
+      localStorage.removeItem('app_custom_providers');
+      checkCustomDataCount();
+      filterProviders();
+    }
+
+    function openFeedbackModal() {
+      const modal = document.getElementById('feedbackModal');
+      if(modal) { modal.classList.remove('hidden'); modal.classList.add('flex'); }
+    }
+
+    function closeFeedbackModal() {
+      const modal = document.getElementById('feedbackModal');
+      if(modal) { modal.classList.add('hidden'); modal.classList.remove('flex'); }
+    }
+
+    function handleFeedbackSubmit(e) {
+      e.preventDefault();
+      const type = document.getElementById('updateType').value;
+      const target = document.getElementById('targetEntity').value || "General";
+      const details = document.getElementById('updateDetails').value;
+      const author = document.getElementById('feedbackAuthor').value || "Anonymous Clinician";
+
+      const newFeedback = { type, target, details, author };
+      const existing = JSON.parse(localStorage.getItem('app_user_feedback') || '[]');
+      localStorage.setItem('app_user_feedback', JSON.stringify([newFeedback, ...existing]));
+
+      const status = document.getElementById('feedbackStatus');
+      if(status) {
+        status.classList.remove('hidden');
+        status.className = "mt-4 p-4 rounded-xl text-sm font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 text-center";
+        status.innerText = "Update submitted to Admin.";
+      }
+      setTimeout(() => {
+        closeFeedbackModal();
+        if(status) status.classList.add('hidden');
+        document.getElementById('updateDetails').value = '';
+        updateAdminStats();
+        renderAdminFeedback();
+      }, 1500);
+    }
+  </script>
+</body>
+</html>
